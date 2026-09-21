@@ -44,7 +44,10 @@ Up to three modes are superposed. For each row:
 | Time | The animation clock, in seconds of structural time |
 | Pause / Play | Freezes the structure at the current instant. You can still rotate it |
 | Restart | Puts the clock back to zero, which is when every mode is at its peak |
-| Reset View | Returns the camera to the isometric starting position and fits the structure |
+| Reset View | Returns the camera to the three-quarter starting view and fits the structure |
+| X-Z View | Looks square-on at the side of the structure, the best view of the deflected shape along its length |
+| X-Y View | Looks straight down on the top face. On the plate, this shows the nodal lines as the white bands in the colour |
+| Y-Z View | Looks along the length at the cross-section, so you see the ends move up and down |
 
 ## Theme
 

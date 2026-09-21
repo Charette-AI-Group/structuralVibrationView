@@ -131,3 +131,49 @@ def testControlsEmitAWholeSetup(qtbot) -> None:
     assert setups[0].kind is StructureKind.cantileverBeam
     assert len(setups[0].modes) == 3
     view.shutdown()
+
+
+def testThePlaybackGroupEndsWithThreePresetViewButtons(qtbot) -> None:
+    view = makeView(qtbot)
+    # Positions are only laid out once the widget is on screen.
+    view.show()
+    qtbot.waitExposed(view)
+    buttons = view.controls.presetViewButtons
+
+    assert [button.text() for button in buttons.values()] == [
+        "X-Z View",
+        "X-Y View",
+        "Y-Z View",
+    ]
+    # Below Play, Restart and Reset View, inside the Playback group.
+    playback = view.controls.playButton.parentWidget()
+    for button in buttons.values():
+        assert button.parentWidget() is playback
+        assert button.y() > view.controls.playButton.y()
+    view.shutdown()
+
+
+def testEachPresetLooksAlongTheAxisNormalToItsPlane(qtbot) -> None:
+    view = makeView(qtbot)
+    view.show()
+    statuses: list[str] = []
+    view.statusMessage.connect(statuses.append)
+    # The axis the camera looks along for each plane.
+    normals = {"xz": 1, "xy": 2, "yz": 0}
+
+    for plane, axis in normals.items():
+        view.controls.presetViewButtons[plane].click()
+        direction = np.array(view.interactor.camera.direction)
+        assert abs(direction[axis]) > 0.999, plane
+        assert statuses[-1] == view.controls.presetViewButtons[plane].text() + "."
+    view.shutdown()
+
+
+def testAPresetViewDoesNotStopTheAnimation(qtbot) -> None:
+    view = VibrationView()
+    qtbot.addWidget(view)
+
+    view.controls.presetViewButtons["xz"].click()
+
+    assert view.isPlaying()
+    view.shutdown()

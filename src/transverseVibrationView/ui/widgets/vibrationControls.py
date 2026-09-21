@@ -7,6 +7,8 @@ is emitted separately because it does not change the model.
 
 from __future__ import annotations
 
+from functools import partial
+
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QComboBox,
@@ -32,6 +34,16 @@ from transverseVibrationView.services import vibrationService
 modeRowCount = 3
 playLabel = "Play"
 pauseLabel = "Pause"
+
+# Preset camera views: the plane seen, and its button label.
+xzView = "xz"
+xyView = "xy"
+yzView = "yz"
+presetViewLabels = {
+    xzView: "X-Z View",
+    xyView: "X-Y View",
+    yzView: "Y-Z View",
+}
 
 
 class ModeRow:
@@ -77,6 +89,7 @@ class VibrationControls(QWidget):
     playToggled = Signal(bool)  # True when playing
     restartRequested = Signal()
     resetViewRequested = Signal()
+    presetViewRequested = Signal(str)  # one of the keys of presetViewLabels
     speedChanged = Signal(float)
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -190,6 +203,17 @@ class VibrationControls(QWidget):
         self.resetViewButton.clicked.connect(self.resetViewRequested)
         buttons.addWidget(self.resetViewButton)
         layout.addLayout(buttons)
+
+        presets = QHBoxLayout()
+        self.presetViewButtons: dict[str, QPushButton] = {}
+        for plane, label in presetViewLabels.items():
+            button = QPushButton(label)
+            button.setObjectName(f"{plane}ViewButton")
+            button.setToolTip(f"Look straight at the {label.removesuffix(' View')} plane.")
+            button.clicked.connect(partial(self.presetViewRequested.emit, plane))
+            presets.addWidget(button)
+            self.presetViewButtons[plane] = button
+        layout.addLayout(presets)
         return group
 
     def currentSetup(self) -> VibrationSetup:

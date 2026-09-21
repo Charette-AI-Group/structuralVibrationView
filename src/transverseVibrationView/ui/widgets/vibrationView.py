@@ -24,7 +24,13 @@ from transverseVibrationView import appConfig
 from transverseVibrationView.models.vibrationModel import VibrationModel, VibrationSetup
 from transverseVibrationView.services import vibrationService
 from transverseVibrationView.ui.widgets.reportingView import ReportingView
-from transverseVibrationView.ui.widgets.vibrationControls import VibrationControls
+from transverseVibrationView.ui.widgets.vibrationControls import (
+    VibrationControls,
+    presetViewLabels,
+    xyView,
+    xzView,
+    yzView,
+)
 
 displacementArrayName = "Displacement"
 deformedMeshName = "deformed"
@@ -61,6 +67,7 @@ class VibrationView(ReportingView):
         self.controls.playToggled.connect(self.setPlaying)
         self.controls.restartRequested.connect(self.restart)
         self.controls.resetViewRequested.connect(self.resetView)
+        self.controls.presetViewRequested.connect(self.showPresetView)
         self.controls.speedChanged.connect(self.setSpeed)
 
         self.applyPalette()
@@ -168,6 +175,26 @@ class VibrationView(ReportingView):
 
     def setSpeed(self, speed: float) -> None:
         self.speed = speed
+
+    def showPresetView(self, plane: str) -> None:
+        """Look square-on at a coordinate plane, fitted to the structure.
+
+        X-Z shows the transverse deflection along the length, X-Y looks down
+        on the top face, and Y-Z looks along the length at the cross-section.
+        The animation carries on; only the camera moves.
+        """
+        setters = {
+            xzView: self.interactor.view_xz,
+            xyView: self.interactor.view_xy,
+            yzView: self.interactor.view_yz,
+        }
+        setter = setters.get(plane)
+        if setter is None:
+            return
+        setter()
+        self.interactor.reset_camera()
+        self.interactor.render()
+        self.reportStatus(f"{presetViewLabels[plane]}.")
 
     def resetView(self) -> None:
         """A three-quarter view with the length running left to right.
