@@ -1,0 +1,73 @@
+"""Tests for the About dialog and its Donate button."""
+
+from __future__ import annotations
+
+from PySide6.QtWidgets import QDialog
+
+from transverseVibrationView import appConfig
+from transverseVibrationView.ui.dialogs.aboutDialog import AboutDialog, aboutHtml, showAbout
+
+
+def testAboutTextCarriesTheCredits() -> None:
+    text = aboutHtml(year=2026)
+
+    assert appConfig.appName in text
+    assert f"Editor: {appConfig.editorName}" in text
+    assert f"AI Agent: {appConfig.aiAgentName}" in text
+    assert f"2026 {appConfig.copyrightHolder}" in text
+    assert appConfig.repoUrl in text
+
+
+def testDialogStartsWithNoDonationRequested(qtbot) -> None:
+    dialog = AboutDialog()
+    qtbot.addWidget(dialog)
+
+    assert not dialog.donateRequested
+    assert dialog.donateButton.text() == "Donate"
+
+
+def testDonateRecordsTheRequestAndClosesTheDialog(qtbot) -> None:
+    """The page opens after the dialog closes, not behind it."""
+    dialog = AboutDialog()
+    qtbot.addWidget(dialog)
+
+    dialog.donateButton.click()
+
+    assert dialog.donateRequested
+    assert dialog.result() == QDialog.DialogCode.Accepted
+
+
+def testCloseLeavesNoDonationRequested(qtbot) -> None:
+    dialog = AboutDialog()
+    qtbot.addWidget(dialog)
+
+    dialog.closeButton.click()
+
+    assert not dialog.donateRequested
+
+
+def testEnterCannotOpenThePaymentPage(qtbot) -> None:
+    """Close takes the default so Return never triggers Donate."""
+    dialog = AboutDialog()
+    qtbot.addWidget(dialog)
+
+    assert dialog.closeButton.isDefault()
+    assert dialog.closeButton.autoDefault()
+    assert not dialog.donateButton.autoDefault()
+
+
+def testShowAboutReportsWhetherItOpenedTheDonationPage(qtbot, monkeypatch) -> None:
+    opened: list[str] = []
+    monkeypatch.setattr(
+        "transverseVibrationView.ui.dialogs.aboutDialog.QDesktopServices.openUrl",
+        lambda url: opened.append(url.toString()) or True,
+    )
+
+    monkeypatch.setattr(AboutDialog, "exec", lambda self: self.onDonateClicked())
+    assert showAbout() is True
+    assert opened == [appConfig.donateUrl]
+
+    opened.clear()
+    monkeypatch.setattr(AboutDialog, "exec", lambda self: None)
+    assert showAbout() is False
+    assert opened == []
