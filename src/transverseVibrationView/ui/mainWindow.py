@@ -15,17 +15,15 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
 )
 
 from transverseVibrationView import appConfig
-from transverseVibrationView.services import themeService
+from transverseVibrationView.services import themeService, windowGeometryService
 from transverseVibrationView.services.manualWorker import ManualWorker
 from transverseVibrationView.ui.dialogs.aboutDialog import showAbout
 from transverseVibrationView.ui.dialogs.errorDialog import showError
 from transverseVibrationView.ui.widgets.reportingView import ReportingView
+from transverseVibrationView.ui.widgets.vibrationView import VibrationView
 
 
 class MainWindow(QMainWindow):
@@ -33,20 +31,17 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(appConfig.windowTitle)
         self.resize(appConfig.defaultWindowWidth, appConfig.defaultWindowHeight)
+        self.restoreSavedGeometry()
         self.manualWorker: ManualWorker | None = None
 
         self.buildMenuBar()
         self.showStatus("Ready")
 
-        self.greetButton = QPushButton("Say Hello")
-        self.greetButton.clicked.connect(self.onGreetClicked)
-
-        centralWidget = QWidget()
-        layout = QVBoxLayout(centralWidget)
-        layout.addWidget(self.greetButton)
-        layout.addStretch()
-
-        self.setCentralWidget(centralWidget)
+        self.vibrationView = VibrationView(self)
+        self.connectView(self.vibrationView)
+        self.setCentralWidget(self.vibrationView)
+        # The view described itself while it was built, before it was wired.
+        self.showStatus(self.vibrationView.description)
 
     def buildMenuBar(self) -> None:
         # Menus are kept as attributes: features can extend them later, and it
@@ -101,6 +96,16 @@ class MainWindow(QMainWindow):
         self.aboutAction = QAction("&About", self)
         self.aboutAction.triggered.connect(self.onHelpAbout)
         helpMenu.addAction(self.aboutAction)
+
+    def restoreSavedGeometry(self) -> None:
+        """Put the window back where it was last closed, if it was.
+
+        The default size set just before stays when nothing is saved, or when
+        Qt cannot use what is - a restore that fails leaves the window alone.
+        """
+        geometry = windowGeometryService.loadGeometry()
+        if geometry is not None:
+            self.restoreGeometry(geometry)
 
     def connectView(self, view: ReportingView) -> None:
         """Wire a view's status and failures into this window.
@@ -184,6 +189,9 @@ class MainWindow(QMainWindow):
             # Short, but a thread running into interpreter shutdown turns a
             # clean exit into a crash.
             self.manualWorker.wait(int(appConfig.manualTimeoutSeconds * 1000) + 1000)
+        # The VTK render window must go before Qt does, or exit is not clean.
+        self.vibrationView.shutdown()
+        windowGeometryService.saveGeometry(self.saveGeometry())
         super().closeEvent(event)
 
     def onHelpAbout(self) -> None:
@@ -191,6 +199,3 @@ class MainWindow(QMainWindow):
             self.showStatus(
                 "Thank you - the donation page is opening in your browser."
             )
-
-    def onGreetClicked(self) -> None:
-        self.showStatus("Hello from Transverse Structural Vibration View")

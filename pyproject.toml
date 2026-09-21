@@ -5,6 +5,9 @@ description = "3D time-domain animation of transverse structural vibration (PySi
 requires-python = ">=3.14"
 dependencies = [
     "PySide6>=6.6,<7",
+    "numpy>=1.26",
+    "pyvista>=0.44",
+    "pyvistaqt>=0.11",
 ]
 
 [project.optional-dependencies]

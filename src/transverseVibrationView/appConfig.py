@@ -45,5 +45,9 @@ manualTimeoutSeconds = 3.0
 appDataDir = Path(os.environ.get("APPDATA", str(Path.home()))) / appName
 settingsFile = appDataDir / "settings.ini"
 windowTitle = appName
-defaultWindowWidth = 800
-defaultWindowHeight = 600
+defaultWindowWidth = 1200
+defaultWindowHeight = 760
+
+# The animation clock. 33 ms is 30 frames per second, smooth enough for a
+# rotation and cheap enough that the view stays responsive on a laptop.
+animationIntervalMs = 33

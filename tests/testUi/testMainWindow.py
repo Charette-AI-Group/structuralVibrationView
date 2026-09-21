@@ -17,17 +17,31 @@ def testMainWindowOpens(qtbot) -> None:
 
     assert mainWindow.isVisible()
     assert mainWindow.windowTitle() == "Transverse Structural Vibration View"
-    assert mainWindow.statusBar().currentMessage() == "Ready"
+    # The bar says what is on screen from the first frame, not "Ready".
+    assert mainWindow.statusBar().currentMessage().startswith("Cantilever Beam: Mode 1")
 
 
-def testGreetButtonUpdatesLabel(qtbot) -> None:
+def testTheVibrationViewIsTheCentralWidgetAndReportsToTheBar(qtbot) -> None:
     mainWindow = MainWindow()
     qtbot.addWidget(mainWindow)
     mainWindow.show()
 
-    qtbot.mouseClick(mainWindow.greetButton, Qt.MouseButton.LeftButton)
+    assert mainWindow.centralWidget() is mainWindow.vibrationView
+    assert mainWindow.vibrationView.isPlaying()
 
-    assert mainWindow.statusBar().currentMessage() == "Hello from Transverse Structural Vibration View"
+    mainWindow.vibrationView.controls.playButton.click()
+
+    assert mainWindow.statusBar().currentMessage().startswith("Paused")
+
+
+def testClosingTheWindowStopsTheAnimation(qtbot) -> None:
+    mainWindow = MainWindow()
+    qtbot.addWidget(mainWindow)
+    mainWindow.show()
+
+    mainWindow.close()
+
+    assert not mainWindow.vibrationView.isPlaying()
 
 
 def testMenuBarStructure(qtbot) -> None:
@@ -196,3 +210,32 @@ def testTheCheckRunsOffTheInterfaceThread(qtbot, monkeypatch) -> None:
     mainWindow.manualWorker.wait(5000)
     qtbot.waitUntil(lambda: mainWindow.manualWorker is None, timeout=5000)
     assert mainWindow.manualAction.isEnabled()
+
+
+def testTheWindowOpensAtTheDefaultSizeOnAFirstRun(qtbot) -> None:
+    mainWindow = MainWindow()
+    qtbot.addWidget(mainWindow)
+
+    assert mainWindow.width() == appConfig.defaultWindowWidth
+    assert mainWindow.height() == appConfig.defaultWindowHeight
+
+
+def testClosingRemembersPositionAndSizeForTheNextLaunch(qtbot) -> None:
+    first = MainWindow()
+    qtbot.addWidget(first)
+    first.show()
+    first.setGeometry(140, 160, 900, 650)
+    qtbot.waitUntil(lambda: first.width() == 900)
+    savedPosition = first.pos()
+
+    first.close()
+
+    reopened = MainWindow()
+    qtbot.addWidget(reopened)
+    # The frame, and so pos(), only settles once the window is on screen.
+    reopened.show()
+    qtbot.waitExposed(reopened)
+    assert reopened.width() == 900
+    assert reopened.height() == 650
+    assert reopened.pos() == savedPosition
+    reopened.vibrationView.shutdown()
