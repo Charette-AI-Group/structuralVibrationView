@@ -23,6 +23,7 @@ widthKey = "structure/width"
 thicknessKey = "structure/thickness"
 densityKey = "structure/density"
 youngsModulusKey = "structure/youngsModulus"
+poissonRatioKey = "structure/poissonRatio"
 
 
 def loadStructureParameters() -> StructureParameters:
@@ -51,6 +52,7 @@ def loadStructureParameters() -> StructureParameters:
     material = MaterialProperties(
         density=read(densityKey, defaults.material.density),
         youngsModulus=read(youngsModulusKey, defaults.material.youngsModulus),
+        poissonRatio=read(poissonRatioKey, defaults.material.poissonRatio),
     )
     try:
         vibrationService.checkMaterial(material)
@@ -68,5 +70,6 @@ def saveStructureParameters(parameters: StructureParameters) -> None:
         (thicknessKey, parameters.size.thickness),
         (densityKey, parameters.material.density),
         (youngsModulusKey, parameters.material.youngsModulus),
+        (poissonRatioKey, parameters.material.poissonRatio),
     ):
         settingsService.writeValue(key, value)

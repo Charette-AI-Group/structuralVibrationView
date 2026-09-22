@@ -169,6 +169,7 @@ def testTheDefaultMaterialIsAluminium() -> None:
 
     assert material.density == 2700.0
     assert material.youngsModulus == 7.0e10
+    assert material.poissonRatio == 0.33
 
 
 @pytest.mark.parametrize(
@@ -176,6 +177,8 @@ def testTheDefaultMaterialIsAluminium() -> None:
     [
         (MaterialProperties(density=0.0, youngsModulus=7.0e10), "Density"),
         (MaterialProperties(density=2700.0, youngsModulus=-1.0), "Young's modulus"),
+        (MaterialProperties(2700.0, 7.0e10, poissonRatio=0.5), "Poisson's ratio"),
+        (MaterialProperties(2700.0, 7.0e10, poissonRatio=-1.0), "Poisson's ratio"),
     ],
 )
 def testAMaterialOutsideItsRangeIsRefusedByName(material, name) -> None:
@@ -267,7 +270,7 @@ def testTheDefaultAluminiumCantileverIsAbout27Hz() -> None:
 def testASquarePlateFundamentalMatchesTheClosedForm() -> None:
     """Simply supported square: f_11 = (pi / a^2) sqrt(D / (rho h))."""
     size = StructureSize(length=0.4, width=0.4, thickness=0.002)
-    nu = vibrationService.poissonRatio
+    nu = aluminium.poissonRatio
     flexural = aluminium.youngsModulus * size.thickness**3 / (12 * (1 - nu**2))
     expected = math.pi / size.length**2 * math.sqrt(flexural / (aluminium.density * size.thickness))
 
@@ -325,3 +328,22 @@ def testHigherBeamModesKeepTheTheoreticalRatios() -> None:
 )
 def testFrequenciesReadAsThreeFigures(hertz, text) -> None:
     assert vibrationService.formatFrequency(hertz) == text
+
+
+
+def testPoissonsRatioStiffensThePlateOnly() -> None:
+    """D grows as 1 / (1 - nu^2); a beam's frequency has no nu in it."""
+    size = StructureSize(0.4, 0.3, 0.002)
+    cork = MaterialProperties(2700.0, 7.0e10, poissonRatio=0.0)
+    rubbery = MaterialProperties(2700.0, 7.0e10, poissonRatio=0.45)
+    plate = StructureKind.simplySupportedPlate
+
+    ratio = vibrationService.naturalFrequencyHz(
+        plate, 1, size, rubbery
+    ) / vibrationService.naturalFrequencyHz(plate, 1, size, cork)
+
+    assert math.isclose(ratio, 1 / math.sqrt(1 - 0.45**2))
+    for beam in (StructureKind.cantileverBeam, StructureKind.simplySupportedBeam):
+        assert vibrationService.naturalFrequencyHz(
+            beam, 1, size, rubbery
+        ) == vibrationService.naturalFrequencyHz(beam, 1, size, cork)

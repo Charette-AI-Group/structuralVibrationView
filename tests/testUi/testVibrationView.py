@@ -244,6 +244,7 @@ def testStructureParametersTabHoldsLengthWidthAndThickness(qtbot) -> None:
         (controls.thicknessSpin, 0.003, " m"),
         (controls.densitySpin, 2700.0, " kg/m³"),
         (controls.youngsModulusSpin, 7.0e10, " N/m²"),
+        (controls.poissonRatioSpin, 0.33, ""),
     ):
         assert page.isAncestorOf(spin), spin.objectName()
         assert spin.suffix() == suffix
@@ -333,4 +334,22 @@ def testAStifferStructureStillPlaysAtTheSameScreenPace(qtbot) -> None:
     view.onTick()
 
     assert np.isclose(view.timeSeconds * view.model.fundamentalFrequencyHz, cyclesPerTick)
+    view.shutdown()
+
+
+
+def testPoissonsRatioChangesTheFundamentalOfThePlateOnly(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+    beamHz = view.model.fundamentalFrequencyHz
+
+    controls.poissonRatioSpin.setValue(0.45)
+    assert view.model.setup.material.poissonRatio == 0.45
+    assert view.model.fundamentalFrequencyHz == beamHz
+
+    controls.kindCombo.setCurrentIndex(list(StructureKind).index(StructureKind.simplySupportedPlate))
+    plateHz = view.model.fundamentalFrequencyHz
+    controls.poissonRatioSpin.setValue(0.0)
+
+    assert view.model.fundamentalFrequencyHz < plateHz
     view.shutdown()

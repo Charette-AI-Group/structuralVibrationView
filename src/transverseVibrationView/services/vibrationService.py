@@ -5,8 +5,9 @@ gives the displacement field at any instant. Pure NumPy so it is testable
 without a window and could drive any renderer.
 
 Beam modes are Euler-Bernoulli; the plate is a simply supported Kirchhoff
-plate. Natural frequencies come from the material (density, Young's modulus)
-and the dimensions, with the boundary conditions of the chosen kind:
+plate. Natural frequencies come from the material (density, Young's modulus,
+and for the plate Poisson's ratio) and the dimensions, with the boundary
+conditions of the chosen kind:
 
     beam   omega_n  = (beta_n L)^2 / L^2 * sqrt(E I / (rho A)),  I / A = t^2 / 12
     plate  omega_mn = pi^2 ((m/a)^2 + (n/b)^2) * sqrt(D / (rho h)),
@@ -31,11 +32,6 @@ from transverseVibrationView.models.vibrationModel import (
     VibrationSetup,
 )
 
-# Poisson's ratio for the plate's bending stiffness. Not an input: aluminium's
-# value, and between 0.25 and 0.35 for most metals it moves the plate's
-# frequencies by under 3 %.
-poissonRatio = 0.33
-
 # Roots of the beam frequency equations, beta * L, for the first six modes.
 cantileverRoots = (1.8751, 4.6941, 7.8548, 10.9955, 14.1372, 17.2788)
 clampedRoots = (4.7300, 7.8532, 10.9956, 14.1372, 17.2788, 20.4204)
@@ -46,7 +42,7 @@ maxModeNumber = 6
 # length is the reference for amplitudes.
 defaultSize = StructureSize(length=0.3, width=0.01, thickness=0.003)
 # Aluminium.
-defaultMaterial = MaterialProperties(density=2700.0, youngsModulus=7.0e10)
+defaultMaterial = MaterialProperties(density=2700.0, youngsModulus=7.0e10, poissonRatio=0.33)
 defaultStructureParameters = StructureParameters(size=defaultSize, material=defaultMaterial)
 
 # Grid points along x, y and z. Fixed per kind so a size change only moves
@@ -60,13 +56,19 @@ widthRange = (0.001, 5.0)
 thicknessRange = (0.0001, 0.5)
 densityRange = (1.0, 25000.0)  # aerogel to osmium, with room either side
 youngsModulusRange = (1.0e5, 1.2e12)  # soft rubber to diamond
+# An isotropic material needs -1 < nu < 0.5: auxetic foams to near-incompressible
+# rubber. The ends themselves are excluded, since the plate formula divides by
+# 1 - nu^2 and 0.5 would mean a material that cannot change volume.
+poissonRatioRange = (-0.99, 0.499)
 
 
 def checkInRange(name: str, value: float, valueRange: tuple[float, float], unit: str) -> None:
     low, high = valueRange
     if not low <= value <= high:
-        raise ValueError(f"{name} must be between {low:g} {unit} and {high:g} {unit}, "
-                         f"not {value:g} {unit}.")
+        units = f" {unit}" if unit else ""
+        raise ValueError(
+            f"{name} must be between {low:g}{units} and {high:g}{units}, not {value:g}{units}."
+        )
 
 
 def checkSize(size: StructureSize) -> None:
@@ -79,6 +81,7 @@ def checkSize(size: StructureSize) -> None:
 def checkMaterial(material: MaterialProperties) -> None:
     checkInRange("Density", material.density, densityRange, "kg/m^3")
     checkInRange("Young's modulus", material.youngsModulus, youngsModulusRange, "N/m^2")
+    checkInRange("Poisson's ratio", material.poissonRatio, poissonRatioRange, "")
 
 
 def checkStructureParameters(parameters: StructureParameters) -> None:
@@ -178,7 +181,8 @@ def plateNaturalFrequencyHz(
 ) -> float:
     """Kirchhoff, simply supported: f_mn = (pi / 2) ((m/a)^2 + (n/b)^2) sqrt(D / (rho h))."""
     h = size.thickness
-    bendingStiffness = material.youngsModulus * h**3 / (12.0 * (1.0 - poissonRatio**2))
+    nu = material.poissonRatio
+    bendingStiffness = material.youngsModulus * h**3 / (12.0 * (1.0 - nu**2))
     omega = (
         math.pi**2
         * plateFrequencyParameter(mn, size.length, size.width)

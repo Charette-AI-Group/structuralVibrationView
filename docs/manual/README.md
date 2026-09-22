@@ -56,6 +56,7 @@ choose, so switching type keeps them.
 | Thickness | 0.0030 m | In the direction of vibration, z, from 0.1 mm to 0.5 m |
 | Density | 2700 kg/m³ | Mass per unit volume, aluminium by default |
 | Young's Modulus | 7.00E+10 N/m² | The material stiffness, aluminium by default. Type it as `7e10`, `7.0E+10` or in full; the arrows step the second digit, 7.00E+10 to 7.10E+10 |
+| Poisson's Ratio | 0.330 | How much the material narrows as it stretches, aluminium by default; steel is about 0.30 and rubber close to 0.5. Accepts -0.99 to 0.499. It changes the plate's frequencies only, since a beam's bending does not depend on it |
 
 The 3D view follows a change of dimension straight away and keeps the camera where you left it;
 press **Reset View** to fit the new size.
@@ -63,7 +64,8 @@ press **Reset View** to fit the new size.
 All five values set the natural frequencies. The beams use Euler-Bernoulli theory, where the
 frequency grows with thickness and the square root of stiffness over density, and falls with
 the square of the length; the width of a beam does not change its frequencies. The plate uses
-Kirchhoff plate theory with a Poisson's ratio of 0.33, so its narrower side matters most: the
+Kirchhoff plate theory, where Poisson's ratio stiffens the plate a little and its narrower
+side matters most: the
 default 1 cm wide strip, held on all four edges, vibrates at tens of kilohertz. Widen it to see
 plate-like frequencies.
 

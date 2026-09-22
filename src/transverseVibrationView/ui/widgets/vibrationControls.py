@@ -229,6 +229,15 @@ class VibrationControls(QWidget):
             suffix=" N/m²",
         )
         form.addRow("Young's Modulus", self.youngsModulusSpin)
+        self.poissonRatioSpin = self.makeSpin(
+            QDoubleSpinBox(), "poissonRatioSpin", vibrationService.poissonRatioRange,
+            material.poissonRatio,
+            "Poisson's ratio: how much the material narrows as it stretches.\n"
+            "Aluminium is about 0.33, steel 0.30, rubber close to 0.5.\n"
+            "It changes the plate's frequencies only; a beam's bending ignores it.",
+            suffix="", decimals=3, step=0.01,
+        )
+        form.addRow("Poisson's Ratio", self.poissonRatioSpin)
         layout.addLayout(form)
         layout.addStretch()
         return page
@@ -267,6 +276,7 @@ class VibrationControls(QWidget):
         return MaterialProperties(
             density=self.densitySpin.value(),
             youngsModulus=self.youngsModulusSpin.value(),
+            poissonRatio=self.poissonRatioSpin.value(),
         )
 
     def currentStructureParameters(self) -> StructureParameters:

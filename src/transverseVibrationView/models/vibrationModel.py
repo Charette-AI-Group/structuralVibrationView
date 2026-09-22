@@ -54,6 +54,8 @@ class MaterialProperties:
 
     density: float  # kg/m^3
     youngsModulus: float  # N/m^2, the material stiffness
+    # Dimensionless. Only the plate uses it; a beam's bending ignores it.
+    poissonRatio: float = 0.33
 
 
 @dataclass(frozen=True)

@@ -15,7 +15,7 @@ from transverseVibrationView.services import (
 
 steel = StructureParameters(
     size=StructureSize(length=0.5, width=0.02, thickness=0.004),
-    material=MaterialProperties(density=7850.0, youngsModulus=2.1e11),
+    material=MaterialProperties(density=7850.0, youngsModulus=2.1e11, poissonRatio=0.30),
 )
 
 
@@ -24,7 +24,7 @@ def testAFirstRunGetsTheAppDefaults() -> None:
 
     assert parameters == vibrationService.defaultStructureParameters
     assert parameters.size == StructureSize(0.3, 0.01, 0.003)
-    assert parameters.material == MaterialProperties(2700.0, 7.0e10)
+    assert parameters.material == MaterialProperties(2700.0, 7.0e10, 0.33)
 
 
 def testSavedValuesComeBackAsTheNewDefaults() -> None:

@@ -250,6 +250,7 @@ def testStructureParametersSetAreTheDefaultsAtTheNextLaunch(qtbot) -> None:
     controls.thicknessSpin.setValue(0.005)
     controls.densitySpin.setValue(7850.0)
     controls.youngsModulusSpin.setValue(2.1e11)
+    controls.poissonRatioSpin.setValue(0.30)
 
     first.close()
 
@@ -261,6 +262,7 @@ def testStructureParametersSetAreTheDefaultsAtTheNextLaunch(qtbot) -> None:
     assert again.thicknessSpin.value() == 0.005
     assert again.densitySpin.value() == 7850.0
     assert again.youngsModulusSpin.value() == 2.1e11
+    assert again.poissonRatioSpin.value() == 0.30
     # And the structure on screen is built from them, not from the old defaults.
     assert reopened.vibrationView.model.geometry.length == 0.45
     reopened.vibrationView.shutdown()
