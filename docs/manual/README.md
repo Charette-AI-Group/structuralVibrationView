@@ -54,6 +54,7 @@ choose, so switching type keeps them.
 | Length | 0.300 m | Along the span, x, from 1 cm to 10 m. Mode amplitudes are fractions of it, so a longer structure moves further |
 | Width | 0.0100 m | Across the span, y, from 1 mm to 5 m. On the plate it also decides which modes come first: a square plate has modes 2 and 3 at the same frequency |
 | Thickness | 0.0030 m | In the direction of vibration, z, from 0.1 mm to 0.5 m |
+| Material | Aluminium | Fills in the three properties below with typical values for Aluminium, Steel, Stainless Steel, Titanium, Copper, Brass, Glass, Concrete, Acrylic or Polycarbonate. Editing any of them by hand shows **Custom**; choosing Custom keeps the values as they are |
 | Density | 2700 kg/m³ | Mass per unit volume, aluminium by default |
 | Young's Modulus | 7.00E+10 N/m² | The material stiffness, aluminium by default. Type it as `7e10`, `7.0E+10` or in full; the arrows step the second digit, 7.00E+10 to 7.10E+10 |
 | Poisson's Ratio | 0.330 | How much the material narrows as it stretches, aluminium by default; steel is about 0.30 and rubber close to 0.5. Accepts -0.99 to 0.499. It changes the plate's frequencies only, since a beam's bending does not depend on it |

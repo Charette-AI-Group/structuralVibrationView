@@ -353,3 +353,82 @@ def testPoissonsRatioChangesTheFundamentalOfThePlateOnly(qtbot) -> None:
 
     assert view.model.fundamentalFrequencyHz < plateHz
     view.shutdown()
+
+
+def selectMaterial(controls, name: str) -> None:
+    """Pick from the dropdown the way a user does: activated, not just set."""
+    index = controls.materialCombo.findText(name)
+    controls.materialCombo.setCurrentIndex(index)
+    controls.materialCombo.activated.emit(index)
+
+
+def testTheMaterialDropdownSitsAboveDensityAndStartsOnAluminium(qtbot) -> None:
+    view = makeView(qtbot)
+    view.show()
+    qtbot.waitExposed(view)
+    controls = view.controls
+    combo = controls.materialCombo
+    # A tab is only laid out once it is shown.
+    controls.tabs.setCurrentIndex(1)
+    qtbot.waitUntil(lambda: combo.isVisible() and combo.y() > 0, timeout=5000)
+
+    assert controls.tabs.widget(1).isAncestorOf(combo)
+    assert combo.y() < controls.densitySpin.y()
+    assert combo.currentText() == "Aluminium"
+    assert combo.itemText(combo.count() - 1) == "Custom"
+    view.shutdown()
+
+
+def testChoosingAPresetFillsAllThreePropertiesInOneUpdate(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+    setups = []
+    controls.setupChanged.connect(setups.append)
+
+    selectMaterial(controls, "Steel")
+
+    assert len(setups) == 1
+    assert setups[0].material.density == 7850.0
+    assert setups[0].material.youngsModulus == 2.1e11
+    assert setups[0].material.poissonRatio == 0.30
+    assert controls.densitySpin.value() == 7850.0
+    assert controls.materialCombo.currentText() == "Steel"
+    view.shutdown()
+
+
+def testEditingAPropertyByHandMakesItCustomAndBack(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+
+    controls.densitySpin.setValue(2800.0)
+    assert controls.materialCombo.currentText() == "Custom"
+
+    controls.densitySpin.setValue(2700.0)
+    assert controls.materialCombo.currentText() == "Aluminium"
+    view.shutdown()
+
+
+def testChoosingCustomKeepsTheValues(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+    selectMaterial(controls, "Titanium")
+    setups = []
+    controls.setupChanged.connect(setups.append)
+
+    selectMaterial(controls, "Custom")
+
+    assert setups == []
+    assert controls.densitySpin.value() == 4500.0
+    # What the user picked stays picked, rather than snapping back to Titanium.
+    assert controls.materialCombo.currentText() == "Custom"
+    view.shutdown()
+
+
+def testAPresetChangesTheComputedFundamental(qtbot) -> None:
+    view = makeView(qtbot)
+    aluminiumHz = view.model.fundamentalFrequencyHz
+
+    selectMaterial(view.controls, "Polycarbonate")
+
+    assert view.model.fundamentalFrequencyHz < aluminiumHz / 3
+    view.shutdown()

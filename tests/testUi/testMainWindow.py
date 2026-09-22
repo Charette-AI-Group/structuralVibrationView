@@ -266,3 +266,19 @@ def testStructureParametersSetAreTheDefaultsAtTheNextLaunch(qtbot) -> None:
     # And the structure on screen is built from them, not from the old defaults.
     assert reopened.vibrationView.model.geometry.length == 0.45
     reopened.vibrationView.shutdown()
+
+
+def testASavedPresetMaterialReopensUnderItsName(qtbot) -> None:
+    first = MainWindow()
+    qtbot.addWidget(first)
+    combo = first.vibrationView.controls.materialCombo
+    index = combo.findText("Copper")
+    combo.setCurrentIndex(index)
+    combo.activated.emit(index)
+
+    first.close()
+
+    reopened = MainWindow()
+    qtbot.addWidget(reopened)
+    assert reopened.vibrationView.controls.materialCombo.currentText() == "Copper"
+    reopened.vibrationView.shutdown()

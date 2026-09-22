@@ -33,7 +33,11 @@ from transverseVibrationView.models.vibrationModel import (
     StructureSize,
     VibrationSetup,
 )
-from transverseVibrationView.services import structureParametersService, vibrationService
+from transverseVibrationView.services import (
+    materialPresets,
+    structureParametersService,
+    vibrationService,
+)
 from transverseVibrationView.ui.widgets.fullWidthTabWidget import FullWidthTabWidget
 from transverseVibrationView.ui.widgets.scientificSpinBox import ScientificSpinBox
 
@@ -215,6 +219,18 @@ class VibrationControls(QWidget):
         )
         form.addRow("Thickness", self.thicknessSpin)
 
+        self.materialCombo = QComboBox()
+        self.materialCombo.setObjectName("materialCombo")
+        for name, preset in materialPresets.materialPresets:
+            self.materialCombo.addItem(name, name)
+        self.materialCombo.addItem(materialPresets.customMaterialName, None)
+        self.materialCombo.setToolTip(
+            "Fills in density, Young's modulus and Poisson's ratio with typical values.\n"
+            "Editing any of them by hand makes it Custom."
+        )
+        self.materialCombo.activated.connect(self.onMaterialChosen)
+        form.addRow("Material", self.materialCombo)
+
         self.densitySpin = self.makeSpin(
             QDoubleSpinBox(), "densitySpin", vibrationService.densityRange,
             material.density, "Mass per unit volume. Aluminium is about 2700 kg/m³.",
@@ -238,6 +254,9 @@ class VibrationControls(QWidget):
             suffix="", decimals=3, step=0.01,
         )
         form.addRow("Poisson's Ratio", self.poissonRatioSpin)
+        for spin in self.materialSpins():
+            spin.valueChanged.connect(self.showMaterialName)
+        self.showMaterialName()
         layout.addLayout(form)
         layout.addStretch()
         return page
@@ -264,6 +283,33 @@ class VibrationControls(QWidget):
         spin.setToolTip(toolTip)
         spin.valueChanged.connect(self.emitSetup)
         return spin
+
+    def materialSpins(self) -> tuple[QDoubleSpinBox, ...]:
+        return (self.densitySpin, self.youngsModulusSpin, self.poissonRatioSpin)
+
+    def onMaterialChosen(self, index: int) -> None:
+        """A preset fills all three properties: one change, one setup."""
+        preset = materialPresets.presetNamed(self.materialCombo.itemData(index) or "")
+        if preset is None:  # Custom: keep whatever is there
+            return
+        for spin, value in zip(
+            self.materialSpins(),
+            (preset.density, preset.youngsModulus, preset.poissonRatio),
+            strict=True,
+        ):
+            blocked = spin.blockSignals(True)
+            spin.setValue(value)
+            spin.blockSignals(blocked)
+        self.showMaterialName()
+        self.emitSetup()
+
+    def showMaterialName(self) -> None:
+        """Name the preset the values match, or Custom when they match none."""
+        name = materialPresets.presetNameFor(self.currentMaterial())
+        index = self.materialCombo.findData(name)  # None finds the Custom entry
+        blocked = self.materialCombo.blockSignals(True)
+        self.materialCombo.setCurrentIndex(index)
+        self.materialCombo.blockSignals(blocked)
 
     def currentSize(self) -> StructureSize:
         return StructureSize(
