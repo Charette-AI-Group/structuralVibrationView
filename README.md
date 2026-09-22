@@ -42,6 +42,18 @@ pytest
 ruff check src tests
 ```
 
+## App icon
+
+The icon - a cantilever clamped to a wall, caught mid-swing in its first mode shape - is drawn
+in code, like 26theOneAssets' and 26pySPWB's: `tools/makeIcons.py` paints it separately at each
+size from 16 to 256 px and packs them into `src/transverseVibrationView/resources/transverseVibrationView.ico`,
+plus a 1024 px PNG. Small sizes drop the swing and keep a bent beam on a wall, which is what
+still reads at 16 px. To redraw it after changing the design:
+
+```powershell
+python tools/makeIcons.py
+```
+
 ## Structure
 
 | Layer | Folder | Purpose |
