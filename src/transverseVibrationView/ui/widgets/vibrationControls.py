@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -64,6 +65,8 @@ class ModeRow:
             "Peak displacement as a fraction of the length. 0 turns the mode off."
         )
         self.amplitudeSpin.setObjectName(f"modeAmplitudeSpin{row}")
+        # Three decimals need the room; left to the grid, "0.050" shows as "0.05".
+        self.amplitudeSpin.setMinimumWidth(self.amplitudeSpin.sizeHint().width())
 
         self.phaseSpin = QDoubleSpinBox()
         self.phaseSpin.setRange(-180.0, 180.0)
@@ -102,7 +105,8 @@ class VibrationControls(QWidget):
         layout.addWidget(self.buildPlaybackGroup())
         layout.addStretch()
 
-        self.setFixedWidth(300)
+        # As wide as the widest row needs and no wider, so no value is cut off.
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
 
     def buildStructureGroup(self, defaults: VibrationSetup) -> QGroupBox:
         group = QGroupBox("Structure")
@@ -115,7 +119,14 @@ class VibrationControls(QWidget):
         self.kindCombo.setCurrentIndex(list(StructureKind).index(defaults.kind))
         self.kindCombo.currentIndexChanged.connect(self.emitSetup)
         form.addRow("Type", self.kindCombo)
+        return group
 
+    def buildModesGroup(self, defaults: VibrationSetup) -> QGroupBox:
+        group = QGroupBox("Modes")
+        layout = QVBoxLayout(group)
+
+        # The clock and the decay apply to every mode, so they sit above the table.
+        form = QFormLayout()
         self.frequencySpin = QDoubleSpinBox()
         self.frequencySpin.setObjectName("frequencySpin")
         self.frequencySpin.setRange(0.05, 5.0)
@@ -140,11 +151,10 @@ class VibrationControls(QWidget):
         )
         self.dampingSpin.valueChanged.connect(self.emitSetup)
         form.addRow("Damping Ratio", self.dampingSpin)
-        return group
+        layout.addLayout(form)
 
-    def buildModesGroup(self, defaults: VibrationSetup) -> QGroupBox:
-        group = QGroupBox("Modes")
-        grid = QGridLayout(group)
+        grid = QGridLayout()
+        layout.addLayout(grid)
         for column, title in enumerate(("Mode", "Amplitude", "Phase"), start=1):
             grid.addWidget(QLabel(title), 0, column)
 

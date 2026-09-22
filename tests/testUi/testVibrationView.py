@@ -177,3 +177,34 @@ def testAPresetViewDoesNotStopTheAnimation(qtbot) -> None:
 
     assert view.isPlaying()
     view.shutdown()
+
+
+def testFundamentalAndDampingSitAtTheTopOfTheModesGroup(qtbot) -> None:
+    view = makeView(qtbot)
+    view.show()
+    qtbot.waitExposed(view)
+    controls = view.controls
+    structure = controls.kindCombo.parentWidget()
+    modes = controls.modeRows[0].numberSpin.parentWidget()
+
+    assert structure.title() == "Structure"
+    assert modes.title() == "Modes"
+    for spin in (controls.frequencySpin, controls.dampingSpin):
+        assert spin.parentWidget() is modes
+        assert spin.y() < controls.modeRows[0].numberSpin.y()
+    assert controls.frequencySpin.y() < controls.dampingSpin.y()
+    view.shutdown()
+
+
+def testAmplitudeBoxesAreWideEnoughForThreeDecimals(qtbot) -> None:
+    view = makeView(qtbot)
+    view.show()
+    qtbot.waitExposed(view)
+
+    for row in view.controls.modeRows:
+        spin = row.amplitudeSpin
+        spin.setValue(0.300)
+        needed = spin.fontMetrics().horizontalAdvance(spin.text())
+        # The editable text area is the box minus its arrow buttons.
+        assert spin.lineEdit().width() >= needed, spin.objectName()
+    view.shutdown()

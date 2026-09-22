@@ -23,12 +23,17 @@ The window opens where you last closed it, at the same size, and maximised if it
 | Control | Meaning |
 |---------|---------|
 | Type | Cantilever beam, simply supported beam, clamped-clamped beam, or simply supported plate |
-| Fundamental | Frequency of mode 1 in hertz. Higher modes are scaled from it using theory, so mode 2 of a cantilever runs at about 6.3 times this value |
-| Damping Ratio | 0 keeps the motion going forever. Anything above 0 makes it decay; press **Restart** to kick it again |
 
 ## Modes
 
-Up to three modes are superposed. For each row:
+The top of the group sets what every mode shares:
+
+| Control | Meaning |
+|---------|---------|
+| Fundamental | Frequency of mode 1 in hertz. Higher modes are scaled from it using theory, so mode 2 of a cantilever runs at about 6.3 times this value |
+| Damping Ratio | 0 keeps the motion going forever. Anything above 0 makes it decay; press **Restart** to kick it again |
+
+Below that, up to three modes are superposed. For each row:
 
 | Column | Meaning |
 |--------|---------|
