@@ -36,6 +36,8 @@ from transverseVibrationView.models.vibrationModel import (
 cantileverRoots = (1.8751, 4.6941, 7.8548, 10.9955, 14.1372, 17.2788)
 clampedRoots = (4.7300, 7.8532, 10.9956, 14.1372, 17.2788, 20.4204)
 maxModeNumber = 6
+# How many modes the Structure Parameters tab offers on their own.
+selectableModeCount = 5
 
 # Defaults until the user sets their own, which are then remembered. One size
 # for every kind, so switching kind keeps what the user chose. Metres; the

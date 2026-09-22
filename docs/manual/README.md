@@ -51,8 +51,8 @@ Below that, up to three modes are superposed. For each row:
 
 ## Structure Parameters tab
 
-The mode to study on its own, and the structure's dimensions and material, in SI units. The dimensions and material you leave here when
-you close the app become the defaults the next time it opens; the mode starts at Mode 1. The same values apply whichever **Type** you
+The mode to study on its own, and the structure's dimensions and material, in SI units. The mode, dimensions and material you leave here
+when you close the app become the defaults the next time it opens. The same values apply whichever **Type** you
 choose, so switching type keeps them.
 
 | Control | Default | Meaning |

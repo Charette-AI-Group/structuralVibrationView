@@ -3,7 +3,7 @@
 While this tab is open the animation shows the single mode chosen at the top,
 built from this tab alone - its dimensions and material, a fixed amplitude,
 no damping - so a mode can be studied without the superposition's settings.
-Dimensions and material are remembered between sessions; the mode is not.
+Dimensions, material and the selected mode are remembered between sessions.
 """
 
 from __future__ import annotations
@@ -26,14 +26,17 @@ from transverseVibrationView.models.vibrationModel import (
 from transverseVibrationView.services import materialPresets, vibrationService
 from transverseVibrationView.ui.widgets.scientificSpinBox import ScientificSpinBox
 
-selectableModeCount = 5
-
 
 class StructureParametersTab(QWidget):
     # Any input on the tab changed, the selected mode included.
     changed = Signal()
 
-    def __init__(self, parameters: StructureParameters, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        parameters: StructureParameters,
+        selectedMode: int = 1,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self.setObjectName("structureParametersPage")
         layout = QVBoxLayout(self)
@@ -42,8 +45,10 @@ class StructureParametersTab(QWidget):
 
         self.modeCombo = QComboBox()
         self.modeCombo.setObjectName("modeCombo")
-        for modeNumber in range(1, selectableModeCount + 1):
+        for modeNumber in range(1, vibrationService.selectableModeCount + 1):
             self.modeCombo.addItem(f"Mode {modeNumber}", modeNumber)
+        # Before the signal is connected: restoring a choice is not a change.
+        self.modeCombo.setCurrentIndex(max(0, self.modeCombo.findData(selectedMode)))
         self.modeCombo.setToolTip(
             "The mode animated while this tab is open, with its natural frequency.\n"
             "It plays alone, at a fixed amplitude and undamped."

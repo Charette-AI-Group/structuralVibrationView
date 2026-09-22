@@ -53,3 +53,20 @@ def testASavedSizeOutOfRangeFallsBackToTheDefaultSize() -> None:
     assert loaded.size == vibrationService.defaultSize
     # The material was fine, so it is kept.
     assert loaded.material == steel.material
+
+
+
+def testAFirstRunStudiesMode1() -> None:
+    assert structureParametersService.loadSelectedMode() == 1
+
+
+def testTheSelectedModeComesBack() -> None:
+    structureParametersService.saveSelectedMode(4)
+
+    assert structureParametersService.loadSelectedMode() == 4
+
+
+def testAnUnusableSelectedModeFallsBackToMode1() -> None:
+    for bad in ("fourth", 0, vibrationService.selectableModeCount + 1):
+        settingsService.writeValue(structureParametersService.selectedModeKey, bad)
+        assert structureParametersService.loadSelectedMode() == 1, bad

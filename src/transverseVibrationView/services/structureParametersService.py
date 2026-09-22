@@ -1,4 +1,4 @@
-"""The Structure Parameters tab's values, remembered between sessions.
+"""The Structure Parameters tab's values and selected mode, remembered between sessions.
 
 The last values the user set become the defaults the next time the app
 opens. Anything missing, unreadable or out of range falls back to the app's
@@ -24,6 +24,8 @@ thicknessKey = "structure/thickness"
 densityKey = "structure/density"
 youngsModulusKey = "structure/youngsModulus"
 poissonRatioKey = "structure/poissonRatio"
+selectedModeKey = "structure/selectedMode"
+defaultSelectedMode = 1
 
 
 def loadStructureParameters() -> StructureParameters:
@@ -73,3 +75,21 @@ def saveStructureParameters(parameters: StructureParameters) -> None:
         (poissonRatioKey, parameters.material.poissonRatio),
     ):
         settingsService.writeValue(key, value)
+
+
+def loadSelectedMode() -> int:
+    """The mode last studied on its own, or mode 1 if none was or it is unusable."""
+    value = settingsService.openSettings().value(selectedModeKey, defaultSelectedMode)
+    try:
+        mode = int(value)
+    except (TypeError, ValueError):
+        logger.warning("Ignoring unreadable %s = %r", selectedModeKey, value)
+        return defaultSelectedMode
+    if not 1 <= mode <= vibrationService.selectableModeCount:
+        logger.warning("Ignoring out-of-range %s = %r", selectedModeKey, value)
+        return defaultSelectedMode
+    return mode
+
+
+def saveSelectedMode(mode: int) -> None:
+    settingsService.writeValue(selectedModeKey, mode)

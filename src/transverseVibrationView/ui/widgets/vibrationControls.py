@@ -116,7 +116,9 @@ class VibrationControls(QWidget):
         self.tabs = FullWidthTabWidget(labelScale=1.0)
         self.tabs.setObjectName("parameterTabs")
         self.tabs.addTab(self.buildModalSuperpositionTab(defaults), modalSuperpositionTabLabel)
-        self.structureTab = StructureParametersTab(saved)
+        self.structureTab = StructureParametersTab(
+            saved, structureParametersService.loadSelectedMode()
+        )
         self.structureTab.changed.connect(self.emitSetup)
         self.tabs.addTab(self.structureTab, structureParametersTabLabel)
         # The open tab chooses what is animated, so switching is a change.

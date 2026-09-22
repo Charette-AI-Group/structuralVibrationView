@@ -196,10 +196,10 @@ class MainWindow(QMainWindow):
         # The VTK render window must go before Qt does, or exit is not clean.
         self.vibrationView.shutdown()
         windowGeometryService.saveGeometry(self.saveGeometry())
-        # The last structure parameters set become the defaults next time.
-        structureParametersService.saveStructureParameters(
-            self.vibrationView.controls.currentStructureParameters()
-        )
+        # The last structure parameters and mode set become the defaults next time.
+        controls = self.vibrationView.controls
+        structureParametersService.saveStructureParameters(controls.currentStructureParameters())
+        structureParametersService.saveSelectedMode(controls.structureTab.selectedMode())
         super().closeEvent(event)
 
     def onHelpAbout(self) -> None:

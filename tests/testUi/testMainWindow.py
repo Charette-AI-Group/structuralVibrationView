@@ -282,3 +282,21 @@ def testASavedPresetMaterialReopensUnderItsName(qtbot) -> None:
     qtbot.addWidget(reopened)
     assert reopened.vibrationView.controls.structureTab.materialCombo.currentText() == "Copper"
     reopened.vibrationView.shutdown()
+
+
+
+def testTheSelectedModeIsTheDefaultAtTheNextLaunch(qtbot) -> None:
+    first = MainWindow()
+    qtbot.addWidget(first)
+    first.vibrationView.controls.structureTab.modeCombo.setCurrentIndex(3)
+
+    first.close()
+
+    reopened = MainWindow()
+    qtbot.addWidget(reopened)
+    controls = reopened.vibrationView.controls
+    assert controls.structureTab.selectedMode() == 4
+    # And it is what the tab animates once opened.
+    controls.tabs.setCurrentIndex(1)
+    assert [term.modeNumber for term in reopened.vibrationView.model.terms] == [4]
+    reopened.vibrationView.shutdown()
