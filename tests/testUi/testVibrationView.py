@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from transverseVibrationView.models.vibrationModel import StructureKind
+from transverseVibrationView.ui.theme import currentTokens
 from transverseVibrationView.ui.widgets.vibrationControls import pauseLabel, playLabel
 from transverseVibrationView.ui.widgets.vibrationView import (
     VibrationView,
@@ -179,20 +180,42 @@ def testAPresetViewDoesNotStopTheAnimation(qtbot) -> None:
     view.shutdown()
 
 
-def testFundamentalAndDampingSitAtTheTopOfTheModesGroup(qtbot) -> None:
+def testModalSuperpositionIsTheFirstOfTwoTabs(qtbot) -> None:
+    view = makeView(qtbot)
+    tabs = view.controls.tabs
+
+    assert [tabs.tabText(i) for i in range(tabs.count())] == [
+        "Modal Superposition",
+        "Structure Parameters",
+    ]
+    assert tabs.currentIndex() == 0
+    view.shutdown()
+
+
+def testTheModalControlsLiveOnTheFirstTab(qtbot) -> None:
     view = makeView(qtbot)
     view.show()
     qtbot.waitExposed(view)
     controls = view.controls
-    structure = controls.kindCombo.parentWidget()
-    modes = controls.modeRows[0].numberSpin.parentWidget()
+    firstPage = controls.tabs.widget(0)
 
-    assert structure.title() == "Structure"
-    assert modes.title() == "Modes"
-    for spin in (controls.frequencySpin, controls.dampingSpin):
-        assert spin.parentWidget() is modes
-        assert spin.y() < controls.modeRows[0].numberSpin.y()
+    widgets = [controls.frequencySpin, controls.dampingSpin]
+    for row in controls.modeRows:
+        widgets += list(row.widgets())
+    for widget in widgets:
+        assert firstPage.isAncestorOf(widget), widget.objectName()
+    # Fundamental and damping stay above the mode table.
     assert controls.frequencySpin.y() < controls.dampingSpin.y()
+    assert controls.dampingSpin.y() < controls.modeRows[0].numberSpin.y()
+    view.shutdown()
+
+
+def testTheOpenTabIsUnderlinedInTheAccent(qtbot) -> None:
+    view = makeView(qtbot)
+    style = view.controls.tabs.tabBar().styleSheet()
+
+    assert "QTabBar::tab:selected" in style
+    assert currentTokens().accent in style
     view.shutdown()
 
 

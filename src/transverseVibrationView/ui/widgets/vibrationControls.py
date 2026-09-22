@@ -31,10 +31,13 @@ from transverseVibrationView.models.vibrationModel import (
     VibrationSetup,
 )
 from transverseVibrationView.services import vibrationService
+from transverseVibrationView.ui.widgets.fullWidthTabWidget import FullWidthTabWidget
 
 modeRowCount = 3
 playLabel = "Play"
 pauseLabel = "Pause"
+modalSuperpositionTabLabel = "Modal Superposition"
+structureParametersTabLabel = "Structure Parameters"
 
 # Preset camera views: the plane seen, and its button label.
 xzView = "xz"
@@ -101,7 +104,11 @@ class VibrationControls(QWidget):
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.buildStructureGroup(defaults))
-        layout.addWidget(self.buildModesGroup(defaults))
+        self.tabs = FullWidthTabWidget(labelScale=1.0)
+        self.tabs.setObjectName("parameterTabs")
+        self.tabs.addTab(self.buildModalSuperpositionTab(defaults), modalSuperpositionTabLabel)
+        self.tabs.addTab(self.buildStructureParametersTab(), structureParametersTabLabel)
+        layout.addWidget(self.tabs)
         layout.addWidget(self.buildPlaybackGroup())
         layout.addStretch()
 
@@ -121,9 +128,10 @@ class VibrationControls(QWidget):
         form.addRow("Type", self.kindCombo)
         return group
 
-    def buildModesGroup(self, defaults: VibrationSetup) -> QGroupBox:
-        group = QGroupBox("Modes")
-        layout = QVBoxLayout(group)
+    def buildModalSuperpositionTab(self, defaults: VibrationSetup) -> QWidget:
+        page = QWidget()
+        page.setObjectName("modalSuperpositionPage")
+        layout = QVBoxLayout(page)
 
         # The clock and the decay apply to every mode, so they sit above the table.
         form = QFormLayout()
@@ -172,7 +180,19 @@ class VibrationControls(QWidget):
             row.amplitudeSpin.valueChanged.connect(self.emitSetup)
             row.phaseSpin.valueChanged.connect(self.emitSetup)
             self.modeRows.append(row)
-        return group
+        layout.addStretch()
+        return page
+
+    def buildStructureParametersTab(self) -> QWidget:
+        """Empty for now: the place for the structure's own parameters."""
+        page = QWidget()
+        page.setObjectName("structureParametersPage")
+        layout = QVBoxLayout(page)
+        note = QLabel("Structure parameters will be set here.")
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        layout.addStretch()
+        return page
 
     def buildPlaybackGroup(self) -> QGroupBox:
         group = QGroupBox("Playback")

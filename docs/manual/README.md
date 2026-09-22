@@ -24,9 +24,11 @@ The window opens where you last closed it, at the same size, and maximised if it
 |---------|---------|
 | Type | Cantilever beam, simply supported beam, clamped-clamped beam, or simply supported plate |
 
-## Modes
+## Modal Superposition tab
 
-The top of the group sets what every mode shares:
+Below the Structure group are two tabs. The open one is underlined in the accent colour.
+
+The top of the **Modal Superposition** tab sets what every mode shares:
 
 | Control | Meaning |
 |---------|---------|
@@ -40,6 +42,10 @@ Below that, up to three modes are superposed. For each row:
 | Mode | Mode number, 1 to 6. For the plate, mode *k* is the *k*-th lowest, and the status bar shows its (m, n) half-wave numbers |
 | Amplitude | Peak displacement as a fraction of the length. 0.05 on the 1 m beam is a 50 mm tip deflection. **0 switches the row off** |
 | Phase | Starting phase in degrees, for watching how two modes interfere |
+
+## Structure Parameters tab
+
+Reserved for the structure's own parameters. It is empty in this version.
 
 ## Playback
 
