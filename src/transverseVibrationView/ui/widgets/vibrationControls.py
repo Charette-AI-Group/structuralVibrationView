@@ -26,12 +26,16 @@ from PySide6.QtWidgets import (
 )
 
 from transverseVibrationView.models.vibrationModel import (
+    MaterialProperties,
     ModeSetting,
     StructureKind,
+    StructureParameters,
+    StructureSize,
     VibrationSetup,
 )
-from transverseVibrationView.services import vibrationService
+from transverseVibrationView.services import structureParametersService, vibrationService
 from transverseVibrationView.ui.widgets.fullWidthTabWidget import FullWidthTabWidget
+from transverseVibrationView.ui.widgets.scientificSpinBox import ScientificSpinBox
 
 modeRowCount = 3
 playLabel = "Play"
@@ -100,14 +104,18 @@ class VibrationControls(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        defaults = VibrationSetup()
+        # The last structure parameters the user set, or the app's defaults.
+        saved = structureParametersService.loadStructureParameters()
+        defaults = VibrationSetup(size=saved.size, material=saved.material)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.buildStructureGroup(defaults))
         self.tabs = FullWidthTabWidget(labelScale=1.0)
         self.tabs.setObjectName("parameterTabs")
         self.tabs.addTab(self.buildModalSuperpositionTab(defaults), modalSuperpositionTabLabel)
-        self.tabs.addTab(self.buildStructureParametersTab(), structureParametersTabLabel)
+        self.tabs.addTab(
+            self.buildStructureParametersTab(saved), structureParametersTabLabel
+        )
         layout.addWidget(self.tabs)
         layout.addWidget(self.buildPlaybackGroup())
         layout.addStretch()
@@ -124,6 +132,7 @@ class VibrationControls(QWidget):
         for kind in StructureKind:
             self.kindCombo.addItem(kind.value, kind)
         self.kindCombo.setCurrentIndex(list(StructureKind).index(defaults.kind))
+        # The dimensions and material are the user's, so a new kind keeps them.
         self.kindCombo.currentIndexChanged.connect(self.emitSetup)
         form.addRow("Type", self.kindCombo)
         return group
@@ -183,16 +192,90 @@ class VibrationControls(QWidget):
         layout.addStretch()
         return page
 
-    def buildStructureParametersTab(self) -> QWidget:
-        """Empty for now: the place for the structure's own parameters."""
+    def buildStructureParametersTab(self, parameters: StructureParameters) -> QWidget:
+        """Dimensions and material, in SI units. Remembered between sessions."""
         page = QWidget()
         page.setObjectName("structureParametersPage")
         layout = QVBoxLayout(page)
-        note = QLabel("Structure parameters will be set here.")
-        note.setWordWrap(True)
-        layout.addWidget(note)
+        form = QFormLayout()
+        size, material = parameters.size, parameters.material
+
+        self.lengthSpin = self.makeSpin(
+            QDoubleSpinBox(), "lengthSpin", vibrationService.lengthRange, size.length,
+            "Length along the span, x. Amplitudes are fractions of it.",
+            suffix=" m", decimals=3, step=0.01,
+        )
+        form.addRow("Length", self.lengthSpin)
+        self.widthSpin = self.makeSpin(
+            QDoubleSpinBox(), "widthSpin", vibrationService.widthRange, size.width,
+            "Width across the span, y. On the plate it also sets which modes come first.",
+            suffix=" m", decimals=4, step=0.001,
+        )
+        form.addRow("Width", self.widthSpin)
+        self.thicknessSpin = self.makeSpin(
+            QDoubleSpinBox(), "thicknessSpin", vibrationService.thicknessRange,
+            size.thickness, "Thickness in the direction of vibration, z.",
+            suffix=" m", decimals=4, step=0.0005,
+        )
+        form.addRow("Thickness", self.thicknessSpin)
+
+        self.densitySpin = self.makeSpin(
+            QDoubleSpinBox(), "densitySpin", vibrationService.densityRange,
+            material.density, "Mass per unit volume. Aluminium is about 2700 kg/m³.",
+            suffix=" kg/m³", decimals=0, step=100.0,
+        )
+        form.addRow("Density", self.densitySpin)
+        self.youngsModulusSpin = self.makeSpin(
+            ScientificSpinBox(), "youngsModulusSpin", vibrationService.youngsModulusRange,
+            material.youngsModulus,
+            "Material stiffness, Young's modulus. Aluminium is about 7.0E+10 N/m². "
+            "Type it as 7e10 if you like.",
+            suffix=" N/m²",
+        )
+        form.addRow("Young's Modulus", self.youngsModulusSpin)
+        layout.addLayout(form)
         layout.addStretch()
         return page
+
+    def makeSpin(
+        self,
+        spin: QDoubleSpinBox,
+        objectName: str,
+        valueRange: tuple[float, float],
+        value: float,
+        toolTip: str,
+        suffix: str,
+        decimals: int | None = None,
+        step: float | None = None,
+    ) -> QDoubleSpinBox:
+        spin.setObjectName(objectName)
+        if decimals is not None:
+            spin.setDecimals(decimals)
+        spin.setRange(*valueRange)
+        if step is not None:
+            spin.setSingleStep(step)
+        spin.setSuffix(suffix)
+        spin.setValue(value)
+        spin.setToolTip(toolTip)
+        spin.valueChanged.connect(self.emitSetup)
+        return spin
+
+    def currentSize(self) -> StructureSize:
+        return StructureSize(
+            length=self.lengthSpin.value(),
+            width=self.widthSpin.value(),
+            thickness=self.thicknessSpin.value(),
+        )
+
+    def currentMaterial(self) -> MaterialProperties:
+        return MaterialProperties(
+            density=self.densitySpin.value(),
+            youngsModulus=self.youngsModulusSpin.value(),
+        )
+
+    def currentStructureParameters(self) -> StructureParameters:
+        """What the Structure Parameters tab shows now, for saving."""
+        return StructureParameters(size=self.currentSize(), material=self.currentMaterial())
 
     def buildPlaybackGroup(self) -> QGroupBox:
         group = QGroupBox("Playback")
@@ -250,6 +333,8 @@ class VibrationControls(QWidget):
         # Qt stores the enum as its string value, so it comes back as one.
         return VibrationSetup(
             kind=StructureKind(self.kindCombo.currentData()),
+            size=self.currentSize(),
+            material=self.currentMaterial(),
             modes=tuple(row.setting() for row in self.modeRows),
             fundamentalFrequencyHz=self.frequencySpin.value(),
             dampingRatio=self.dampingSpin.value(),

@@ -18,7 +18,11 @@ from PySide6.QtWidgets import (
 )
 
 from transverseVibrationView import appConfig
-from transverseVibrationView.services import themeService, windowGeometryService
+from transverseVibrationView.services import (
+    structureParametersService,
+    themeService,
+    windowGeometryService,
+)
 from transverseVibrationView.services.manualWorker import ManualWorker
 from transverseVibrationView.ui.dialogs.aboutDialog import showAbout
 from transverseVibrationView.ui.dialogs.errorDialog import showError
@@ -192,6 +196,10 @@ class MainWindow(QMainWindow):
         # The VTK render window must go before Qt does, or exit is not clean.
         self.vibrationView.shutdown()
         windowGeometryService.saveGeometry(self.saveGeometry())
+        # The last structure parameters set become the defaults next time.
+        structureParametersService.saveStructureParameters(
+            self.vibrationView.controls.currentStructureParameters()
+        )
         super().closeEvent(event)
 
     def onHelpAbout(self) -> None:

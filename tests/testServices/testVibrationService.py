@@ -8,8 +8,10 @@ import numpy as np
 import pytest
 
 from transverseVibrationView.models.vibrationModel import (
+    MaterialProperties,
     ModeSetting,
     StructureKind,
+    StructureSize,
     VibrationSetup,
 )
 from transverseVibrationView.services import vibrationService
@@ -140,3 +142,85 @@ def testDescriptionNamesTheModesAndTheirFrequencies() -> None:
 
     silent = vibrationService.buildModel(VibrationSetup(modes=(ModeSetting(1, 0.0),)))
     assert "nothing moves" in vibrationService.describeModel(silent)
+
+
+def testTheGeometryTakesTheSizeItIsGiven() -> None:
+    size = StructureSize(length=2.5, width=0.2, thickness=0.05)
+
+    geometry = vibrationService.buildGeometry(StructureKind.cantileverBeam, size)
+
+    assert (geometry.length, geometry.width, geometry.thickness) == (2.5, 0.2, 0.05)
+    assert math.isclose(float(geometry.x.max()), 2.5)
+    assert math.isclose(float(np.ptp(geometry.y)), 0.2)
+    assert math.isclose(float(np.ptp(geometry.points[:, 2])), 0.05)
+    # Same grid as the default size, so the view can keep its mesh.
+    assert geometry.dimensions == vibrationService.beamDimensions
+
+
+def testWithoutASizeEveryKindUsesTheDefaultSize() -> None:
+    """30 cm by 1 cm by 3 mm, whatever the kind, until the user sets their own."""
+    for kind in StructureKind:
+        geometry = vibrationService.buildModel(VibrationSetup(kind=kind)).geometry
+        assert (geometry.length, geometry.width, geometry.thickness) == (0.3, 0.01, 0.003)
+
+
+def testTheDefaultMaterialIsAluminium() -> None:
+    material = vibrationService.defaultMaterial
+
+    assert material.density == 2700.0
+    assert material.youngsModulus == 7.0e10
+
+
+@pytest.mark.parametrize(
+    "material, name",
+    [
+        (MaterialProperties(density=0.0, youngsModulus=7.0e10), "Density"),
+        (MaterialProperties(density=2700.0, youngsModulus=-1.0), "Young's modulus"),
+    ],
+)
+def testAMaterialOutsideItsRangeIsRefusedByName(material, name) -> None:
+    with pytest.raises(ValueError, match=name):
+        vibrationService.buildModel(VibrationSetup(material=material))
+
+
+def testAmplitudesScaleWithTheLength() -> None:
+    modes = (ModeSetting(1, 0.1),)
+    short = vibrationService.buildModel(
+        VibrationSetup(modes=modes, size=StructureSize(1.0, 0.08, 0.03))
+    )
+    long = vibrationService.buildModel(
+        VibrationSetup(modes=modes, size=StructureSize(3.0, 0.08, 0.03))
+    )
+
+    peakShort = float(np.max(np.abs(vibrationService.displacementAt(short, 0.0))))
+    peakLong = float(np.max(np.abs(vibrationService.displacementAt(long, 0.0))))
+
+    assert math.isclose(peakLong, 3 * peakShort)
+
+
+def testASquarePlateHasItsTwoSecondModesAtTheSameFrequency() -> None:
+    """Width changes which plate modes come first, and a square is symmetric."""
+    square = StructureSize(1.0, 1.0, 0.01)
+    setup = VibrationSetup(
+        kind=StructureKind.simplySupportedPlate,
+        size=square,
+        modes=(ModeSetting(2, 0.05), ModeSetting(3, 0.05)),
+    )
+
+    terms = vibrationService.buildModel(setup).terms
+
+    assert {term.label for term in terms} == {"Mode 2 (1,2)", "Mode 3 (2,1)"}
+    assert math.isclose(terms[0].frequencyHz, terms[1].frequencyHz)
+
+
+@pytest.mark.parametrize(
+    "size, name",
+    [
+        (StructureSize(0.0, 0.08, 0.03), "Length"),
+        (StructureSize(1.0, -0.1, 0.03), "Width"),
+        (StructureSize(1.0, 0.08, 2.0), "Thickness"),
+    ],
+)
+def testASizeOutsideItsRangeIsRefusedByName(size, name) -> None:
+    with pytest.raises(ValueError, match=name):
+        vibrationService.buildGeometry(StructureKind.cantileverBeam, size)

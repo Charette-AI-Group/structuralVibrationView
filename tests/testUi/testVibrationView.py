@@ -231,3 +231,64 @@ def testAmplitudeBoxesAreWideEnoughForThreeDecimals(qtbot) -> None:
         # The editable text area is the box minus its arrow buttons.
         assert spin.lineEdit().width() >= needed, spin.objectName()
     view.shutdown()
+
+
+def testStructureParametersTabHoldsLengthWidthAndThickness(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+    page = controls.tabs.widget(1)
+
+    for spin, value, suffix in (
+        (controls.lengthSpin, 0.3, " m"),
+        (controls.widthSpin, 0.01, " m"),
+        (controls.thicknessSpin, 0.003, " m"),
+        (controls.densitySpin, 2700.0, " kg/m³"),
+        (controls.youngsModulusSpin, 7.0e10, " N/m²"),
+    ):
+        assert page.isAncestorOf(spin), spin.objectName()
+        assert spin.suffix() == suffix
+        assert spin.value() == value
+    assert controls.youngsModulusSpin.text() == "7.00E+10 N/m²"
+    view.shutdown()
+
+
+def testChangingTheLengthRebuildsTheStructureAtThatLength(qtbot) -> None:
+    view = makeView(qtbot)
+    cameraBefore = view.interactor.camera_position
+
+    view.controls.lengthSpin.setValue(2.0)
+
+    assert view.model.geometry.length == 2.0
+    assert np.isclose(np.array(view.mesh.points)[:, 0].max(), 2.0)
+    # A size change keeps the camera where the user left it.
+    assert view.interactor.camera_position == cameraBefore
+    view.shutdown()
+
+
+def testChangingTheTypeKeepsTheUsersDimensionsAndMaterial(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+    controls.widthSpin.setValue(0.3)
+    controls.densitySpin.setValue(7850.0)
+    setups = []
+    controls.setupChanged.connect(setups.append)
+
+    controls.kindCombo.setCurrentIndex(list(StructureKind).index(StructureKind.simplySupportedPlate))
+
+    assert len(setups) == 1
+    assert setups[0].size.width == 0.3
+    assert setups[0].material.density == 7850.0
+    assert view.model.geometry.width == 0.3
+    view.shutdown()
+
+
+def testMaterialChangesReachTheSetup(qtbot) -> None:
+    view = makeView(qtbot)
+    setups = []
+    view.controls.setupChanged.connect(setups.append)
+
+    view.controls.youngsModulusSpin.setValue(2.1e11)
+
+    assert setups[-1].material.youngsModulus == 2.1e11
+    assert view.model.setup.material.youngsModulus == 2.1e11
+    view.shutdown()

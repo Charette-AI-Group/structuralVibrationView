@@ -40,10 +40,40 @@ class ModeSetting:
 
 
 @dataclass(frozen=True)
+class StructureSize:
+    """Overall dimensions in metres: along x, across y, and through z."""
+
+    length: float
+    width: float
+    thickness: float
+
+
+@dataclass(frozen=True)
+class MaterialProperties:
+    """What the structure is made of, in SI units."""
+
+    density: float  # kg/m^3
+    youngsModulus: float  # N/m^2, the material stiffness
+
+
+@dataclass(frozen=True)
+class StructureParameters:
+    """Everything on the Structure Parameters tab: remembered between sessions."""
+
+    size: StructureSize
+    material: MaterialProperties
+
+
+@dataclass(frozen=True)
 class VibrationSetup:
-    """Everything the user chooses. Frozen so a change is a new value."""
+    """Everything the user chooses. Frozen so a change is a new value.
+
+    `size` and `material` None mean the app's defaults.
+    """
 
     kind: StructureKind = StructureKind.cantileverBeam
+    size: StructureSize | None = None
+    material: MaterialProperties | None = None
     modes: tuple[ModeSetting, ...] = (
         ModeSetting(1, 0.05),
         ModeSetting(2, 0.0),

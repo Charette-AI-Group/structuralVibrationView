@@ -17,10 +17,13 @@ import math
 import numpy as np
 
 from transverseVibrationView.models.vibrationModel import (
+    MaterialProperties,
     ModalTerm,
     ModeSetting,
     StructureGeometry,
     StructureKind,
+    StructureParameters,
+    StructureSize,
     VibrationModel,
     VibrationSetup,
 )
@@ -30,26 +33,57 @@ cantileverRoots = (1.8751, 4.6941, 7.8548, 10.9955, 14.1372, 17.2788)
 clampedRoots = (4.7300, 7.8532, 10.9956, 14.1372, 17.2788, 20.4204)
 maxModeNumber = 6
 
-# Nominal sizes, in metres. The length is the reference for amplitudes.
-beamLength = 1.0
-beamWidth = 0.08
-beamThickness = 0.03
-beamDimensions = (61, 5, 3)
+# Defaults until the user sets their own, which are then remembered. One size
+# for every kind, so switching kind keeps what the user chose. Metres; the
+# length is the reference for amplitudes.
+defaultSize = StructureSize(length=0.3, width=0.01, thickness=0.003)
+# Aluminium.
+defaultMaterial = MaterialProperties(density=2700.0, youngsModulus=7.0e10)
+defaultStructureParameters = StructureParameters(size=defaultSize, material=defaultMaterial)
 
-plateLength = 1.0
-plateWidth = 0.6
-plateThickness = 0.015
+# Grid points along x, y and z. Fixed per kind so a size change only moves
+# points, and the view can keep the mesh it already has.
+beamDimensions = (61, 5, 3)
 plateDimensions = (41, 25, 2)
 
+# What the inputs accept: (minimum, maximum). Metres, kg/m^3 and N/m^2.
+lengthRange = (0.01, 10.0)
+widthRange = (0.001, 5.0)
+thicknessRange = (0.0001, 0.5)
+densityRange = (1.0, 25000.0)  # aerogel to osmium, with room either side
+youngsModulusRange = (1.0e5, 1.2e12)  # soft rubber to diamond
 
-def buildGeometry(kind: StructureKind) -> StructureGeometry:
+
+def checkInRange(name: str, value: float, valueRange: tuple[float, float], unit: str) -> None:
+    low, high = valueRange
+    if not low <= value <= high:
+        raise ValueError(f"{name} must be between {low:g} {unit} and {high:g} {unit}, "
+                         f"not {value:g} {unit}.")
+
+
+def checkSize(size: StructureSize) -> None:
+    """Refuse sizes a grid cannot be built from, saying which and why."""
+    checkInRange("Length", size.length, lengthRange, "m")
+    checkInRange("Width", size.width, widthRange, "m")
+    checkInRange("Thickness", size.thickness, thicknessRange, "m")
+
+
+def checkMaterial(material: MaterialProperties) -> None:
+    checkInRange("Density", material.density, densityRange, "kg/m^3")
+    checkInRange("Young's modulus", material.youngsModulus, youngsModulusRange, "N/m^2")
+
+
+def checkStructureParameters(parameters: StructureParameters) -> None:
+    checkSize(parameters.size)
+    checkMaterial(parameters.material)
+
+
+def buildGeometry(kind: StructureKind, size: StructureSize | None = None) -> StructureGeometry:
     """An undeformed structured grid, points ordered with x varying fastest."""
-    if kind.isPlate:
-        length, width, thickness = plateLength, plateWidth, plateThickness
-        dimensions = plateDimensions
-    else:
-        length, width, thickness = beamLength, beamWidth, beamThickness
-        dimensions = beamDimensions
+    size = size or defaultSize
+    checkSize(size)
+    length, width, thickness = size.length, size.width, size.thickness
+    dimensions = plateDimensions if kind.isPlate else beamDimensions
     xs = np.linspace(0.0, length, dimensions[0])
     ys = np.linspace(-width / 2, width / 2, dimensions[1])
     zs = np.linspace(-thickness / 2, thickness / 2, dimensions[2])
@@ -140,7 +174,8 @@ def modalTerm(setup: VibrationSetup, geometry: StructureGeometry, mode: ModeSett
 
 
 def buildModel(setup: VibrationSetup) -> VibrationModel:
-    geometry = buildGeometry(setup.kind)
+    checkMaterial(setup.material or defaultMaterial)
+    geometry = buildGeometry(setup.kind, setup.size)
     terms = tuple(modalTerm(setup, geometry, mode) for mode in setup.activeModes)
     return VibrationModel(setup=setup, geometry=geometry, terms=terms)
 

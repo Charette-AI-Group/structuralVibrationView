@@ -239,3 +239,28 @@ def testClosingRemembersPositionAndSizeForTheNextLaunch(qtbot) -> None:
     assert reopened.height() == 650
     assert reopened.pos() == savedPosition
     reopened.vibrationView.shutdown()
+
+
+def testStructureParametersSetAreTheDefaultsAtTheNextLaunch(qtbot) -> None:
+    first = MainWindow()
+    qtbot.addWidget(first)
+    controls = first.vibrationView.controls
+    controls.lengthSpin.setValue(0.45)
+    controls.widthSpin.setValue(0.02)
+    controls.thicknessSpin.setValue(0.005)
+    controls.densitySpin.setValue(7850.0)
+    controls.youngsModulusSpin.setValue(2.1e11)
+
+    first.close()
+
+    reopened = MainWindow()
+    qtbot.addWidget(reopened)
+    again = reopened.vibrationView.controls
+    assert again.lengthSpin.value() == 0.45
+    assert again.widthSpin.value() == 0.02
+    assert again.thicknessSpin.value() == 0.005
+    assert again.densitySpin.value() == 7850.0
+    assert again.youngsModulusSpin.value() == 2.1e11
+    # And the structure on screen is built from them, not from the old defaults.
+    assert reopened.vibrationView.model.geometry.length == 0.45
+    reopened.vibrationView.shutdown()

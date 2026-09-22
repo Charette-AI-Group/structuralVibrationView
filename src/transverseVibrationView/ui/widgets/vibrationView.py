@@ -88,17 +88,21 @@ class VibrationView(ReportingView):
                 f"The structure could not be built for these settings. {error}",
             )
             return
-        rebuildMesh = self.model is None or self.model.geometry.kind is not model.geometry.kind
+        previous = self.model
         self.model = model
-        if rebuildMesh:
+        if previous is None or previous.geometry.kind is not model.geometry.kind:
             self.buildScene()
+        elif previous.setup.size != model.setup.size:
+            # Same kind, new size: rebuild, but leave the camera where the
+            # user put it rather than jumping on every step of a spin box.
+            self.buildScene(resetCamera=False)
         else:
             self.updateColourRange()
         self.updateFrame()
         self.description = vibrationService.describeModel(model)
         self.reportStatus(self.description)
 
-    def buildScene(self) -> None:
+    def buildScene(self, resetCamera: bool = True) -> None:
         assert self.model is not None
         geometry = self.model.geometry
         self.interactor.remove_actor(deformedMeshName, render=False)
@@ -131,7 +135,10 @@ class VibrationView(ReportingView):
             scalar_bar_args={"title": "Displacement (m)", "vertical": False},
         )
         self.applyPalette()
-        self.resetView()
+        if resetCamera:
+            self.resetView()
+        else:
+            self.interactor.reset_camera_clipping_range()
 
     def updateColourRange(self) -> None:
         """Keep the colour scale at the worst case so it never saturates."""

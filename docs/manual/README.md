@@ -45,7 +45,22 @@ Below that, up to three modes are superposed. For each row:
 
 ## Structure Parameters tab
 
-Reserved for the structure's own parameters. It is empty in this version.
+The structure's dimensions and material, in SI units. The values you leave here when you close
+the app become the defaults the next time it opens. The same values apply whichever **Type** you
+choose, so switching type keeps them.
+
+| Control | Default | Meaning |
+|---------|---------|---------|
+| Length | 0.300 m | Along the span, x, from 1 cm to 10 m. Mode amplitudes are fractions of it, so a longer structure moves further |
+| Width | 0.0100 m | Across the span, y, from 1 mm to 5 m. On the plate it also decides which modes come first: a square plate has modes 2 and 3 at the same frequency |
+| Thickness | 0.0030 m | In the direction of vibration, z, from 0.1 mm to 0.5 m |
+| Density | 2700 kg/m³ | Mass per unit volume, aluminium by default |
+| Young's Modulus | 7.00E+10 N/m² | The material stiffness, aluminium by default. Type it as `7e10`, `7.0E+10` or in full; the arrows step the second digit, 7.00E+10 to 7.10E+10 |
+
+The 3D view follows a change of dimension straight away and keeps the camera where you left it;
+press **Reset View** to fit the new size. Density and Young's modulus are stored with the
+structure, but the animation frequencies still come from **Fundamental** on the Modal
+Superposition tab.
 
 ## Playback
 
