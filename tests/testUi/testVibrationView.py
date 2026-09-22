@@ -239,17 +239,17 @@ def testStructureParametersTabHoldsLengthWidthAndThickness(qtbot) -> None:
     page = controls.tabs.widget(1)
 
     for spin, value, suffix in (
-        (controls.lengthSpin, 0.3, " m"),
-        (controls.widthSpin, 0.01, " m"),
-        (controls.thicknessSpin, 0.003, " m"),
-        (controls.densitySpin, 2700.0, " kg/m³"),
-        (controls.youngsModulusSpin, 7.0e10, " N/m²"),
-        (controls.poissonRatioSpin, 0.33, ""),
+        (controls.structureTab.lengthSpin, 0.3, " m"),
+        (controls.structureTab.widthSpin, 0.01, " m"),
+        (controls.structureTab.thicknessSpin, 0.003, " m"),
+        (controls.structureTab.densitySpin, 2700.0, " kg/m³"),
+        (controls.structureTab.youngsModulusSpin, 7.0e10, " N/m²"),
+        (controls.structureTab.poissonRatioSpin, 0.33, ""),
     ):
         assert page.isAncestorOf(spin), spin.objectName()
         assert spin.suffix() == suffix
         assert spin.value() == value
-    assert controls.youngsModulusSpin.text() == "7.00E+10 N/m²"
+    assert controls.structureTab.youngsModulusSpin.text() == "7.00E+10 N/m²"
     view.shutdown()
 
 
@@ -257,7 +257,7 @@ def testChangingTheLengthRebuildsTheStructureAtThatLength(qtbot) -> None:
     view = makeView(qtbot)
     cameraBefore = view.interactor.camera_position
 
-    view.controls.lengthSpin.setValue(2.0)
+    view.controls.structureTab.lengthSpin.setValue(2.0)
 
     assert view.model.geometry.length == 2.0
     assert np.isclose(np.array(view.mesh.points)[:, 0].max(), 2.0)
@@ -269,8 +269,8 @@ def testChangingTheLengthRebuildsTheStructureAtThatLength(qtbot) -> None:
 def testChangingTheTypeKeepsTheUsersDimensionsAndMaterial(qtbot) -> None:
     view = makeView(qtbot)
     controls = view.controls
-    controls.widthSpin.setValue(0.3)
-    controls.densitySpin.setValue(7850.0)
+    controls.structureTab.widthSpin.setValue(0.3)
+    controls.structureTab.densitySpin.setValue(7850.0)
     setups = []
     controls.setupChanged.connect(setups.append)
 
@@ -288,7 +288,7 @@ def testMaterialChangesReachTheSetup(qtbot) -> None:
     setups = []
     view.controls.setupChanged.connect(setups.append)
 
-    view.controls.youngsModulusSpin.setValue(2.1e11)
+    view.controls.structureTab.youngsModulusSpin.setValue(2.1e11)
 
     assert setups[-1].material.youngsModulus == 2.1e11
     assert view.model.setup.material.youngsModulus == 2.1e11
@@ -302,7 +302,7 @@ def testTheFundamentalIsComputedAndShown(qtbot) -> None:
 
     assert label.text() == "27.4 Hz"
 
-    view.controls.thicknessSpin.setValue(0.006)
+    view.controls.structureTab.thicknessSpin.setValue(0.006)
 
     # Twice as thick, twice the frequency.
     assert label.text() == "54.8 Hz"
@@ -330,7 +330,7 @@ def testAStifferStructureStillPlaysAtTheSameScreenPace(qtbot) -> None:
     cyclesPerTick = view.timeSeconds * view.model.fundamentalFrequencyHz
 
     view.restart()
-    view.controls.youngsModulusSpin.setValue(2.8e11)
+    view.controls.structureTab.youngsModulusSpin.setValue(2.8e11)
     view.onTick()
 
     assert np.isclose(view.timeSeconds * view.model.fundamentalFrequencyHz, cyclesPerTick)
@@ -343,13 +343,13 @@ def testPoissonsRatioChangesTheFundamentalOfThePlateOnly(qtbot) -> None:
     controls = view.controls
     beamHz = view.model.fundamentalFrequencyHz
 
-    controls.poissonRatioSpin.setValue(0.45)
+    controls.structureTab.poissonRatioSpin.setValue(0.45)
     assert view.model.setup.material.poissonRatio == 0.45
     assert view.model.fundamentalFrequencyHz == beamHz
 
     controls.kindCombo.setCurrentIndex(list(StructureKind).index(StructureKind.simplySupportedPlate))
     plateHz = view.model.fundamentalFrequencyHz
-    controls.poissonRatioSpin.setValue(0.0)
+    controls.structureTab.poissonRatioSpin.setValue(0.0)
 
     assert view.model.fundamentalFrequencyHz < plateHz
     view.shutdown()
@@ -357,9 +357,9 @@ def testPoissonsRatioChangesTheFundamentalOfThePlateOnly(qtbot) -> None:
 
 def selectMaterial(controls, name: str) -> None:
     """Pick from the dropdown the way a user does: activated, not just set."""
-    index = controls.materialCombo.findText(name)
-    controls.materialCombo.setCurrentIndex(index)
-    controls.materialCombo.activated.emit(index)
+    index = controls.structureTab.materialCombo.findText(name)
+    controls.structureTab.materialCombo.setCurrentIndex(index)
+    controls.structureTab.materialCombo.activated.emit(index)
 
 
 def testTheMaterialDropdownSitsAboveDensityAndStartsOnAluminium(qtbot) -> None:
@@ -367,13 +367,13 @@ def testTheMaterialDropdownSitsAboveDensityAndStartsOnAluminium(qtbot) -> None:
     view.show()
     qtbot.waitExposed(view)
     controls = view.controls
-    combo = controls.materialCombo
+    combo = controls.structureTab.materialCombo
     # A tab is only laid out once it is shown.
     controls.tabs.setCurrentIndex(1)
     qtbot.waitUntil(lambda: combo.isVisible() and combo.y() > 0, timeout=5000)
 
     assert controls.tabs.widget(1).isAncestorOf(combo)
-    assert combo.y() < controls.densitySpin.y()
+    assert combo.y() < controls.structureTab.densitySpin.y()
     assert combo.currentText() == "Aluminium"
     assert combo.itemText(combo.count() - 1) == "Custom"
     view.shutdown()
@@ -391,8 +391,8 @@ def testChoosingAPresetFillsAllThreePropertiesInOneUpdate(qtbot) -> None:
     assert setups[0].material.density == 7850.0
     assert setups[0].material.youngsModulus == 2.1e11
     assert setups[0].material.poissonRatio == 0.30
-    assert controls.densitySpin.value() == 7850.0
-    assert controls.materialCombo.currentText() == "Steel"
+    assert controls.structureTab.densitySpin.value() == 7850.0
+    assert controls.structureTab.materialCombo.currentText() == "Steel"
     view.shutdown()
 
 
@@ -400,11 +400,11 @@ def testEditingAPropertyByHandMakesItCustomAndBack(qtbot) -> None:
     view = makeView(qtbot)
     controls = view.controls
 
-    controls.densitySpin.setValue(2800.0)
-    assert controls.materialCombo.currentText() == "Custom"
+    controls.structureTab.densitySpin.setValue(2800.0)
+    assert controls.structureTab.materialCombo.currentText() == "Custom"
 
-    controls.densitySpin.setValue(2700.0)
-    assert controls.materialCombo.currentText() == "Aluminium"
+    controls.structureTab.densitySpin.setValue(2700.0)
+    assert controls.structureTab.materialCombo.currentText() == "Aluminium"
     view.shutdown()
 
 
@@ -418,9 +418,9 @@ def testChoosingCustomKeepsTheValues(qtbot) -> None:
     selectMaterial(controls, "Custom")
 
     assert setups == []
-    assert controls.densitySpin.value() == 4500.0
+    assert controls.structureTab.densitySpin.value() == 4500.0
     # What the user picked stays picked, rather than snapping back to Titanium.
-    assert controls.materialCombo.currentText() == "Custom"
+    assert controls.structureTab.materialCombo.currentText() == "Custom"
     view.shutdown()
 
 
@@ -431,4 +431,107 @@ def testAPresetChangesTheComputedFundamental(qtbot) -> None:
     selectMaterial(view.controls, "Polycarbonate")
 
     assert view.model.fundamentalFrequencyHz < aluminiumHz / 3
+    view.shutdown()
+
+
+def openStructureTab(view) -> None:
+    view.controls.tabs.setCurrentIndex(1)
+
+
+def testTheModeDropdownIsFirstAndListsFiveModesWithFrequencies(qtbot) -> None:
+    view = makeView(qtbot)
+    view.show()
+    qtbot.waitExposed(view)
+    openStructureTab(view)
+    tab = view.controls.structureTab
+    qtbot.waitUntil(lambda: tab.modeCombo.isVisible() and tab.lengthSpin.y() > 0, timeout=5000)
+    combo = tab.modeCombo
+
+    assert [combo.itemText(i) for i in range(combo.count())] == [
+        "Mode 1 (27.4 Hz)",
+        "Mode 2 (172 Hz)",
+        "Mode 3 (481 Hz)",
+        "Mode 4 (943 Hz)",
+        "Mode 5 (1.56 kHz)",
+    ]
+    assert combo.y() < tab.lengthSpin.y()
+    view.shutdown()
+
+
+def testOpeningTheTabAnimatesOnlyItsSelectedMode(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+    # Superposition settings that must not leak into the single-mode view.
+    controls.modeRows[1].amplitudeSpin.setValue(0.1)
+    controls.dampingSpin.setValue(0.2)
+    statuses: list[str] = []
+    view.statusMessage.connect(statuses.append)
+
+    openStructureTab(view)
+
+    assert view.model.setup.singleMode
+    assert [term.modeNumber for term in view.model.terms] == [1]
+    assert view.model.terms[0].amplitude == 0.05
+    assert view.model.setup.dampingRatio == 0.0
+    assert statuses[-1] == "Cantilever Beam: Mode 1 at 27.4 Hz"
+    view.shutdown()
+
+
+def testTheSuperpositionTabCannotChangeTheSingleModeAnimation(qtbot) -> None:
+    view = makeView(qtbot)
+    openStructureTab(view)
+
+    view.controls.modeRows[0].amplitudeSpin.setValue(0.2)
+    view.controls.dampingSpin.setValue(0.3)
+
+    assert view.model.terms[0].amplitude == 0.05
+    assert view.model.setup.dampingRatio == 0.0
+    view.shutdown()
+
+
+def testChoosingAModeAnimatesItAndPacesTheClockByIt(qtbot) -> None:
+    from transverseVibrationView import appConfig
+
+    view = makeView(qtbot)
+    openStructureTab(view)
+
+    view.controls.structureTab.modeCombo.setCurrentIndex(2)
+
+    term = view.model.terms[0]
+    assert term.modeNumber == 3
+    assert view.model.referenceFrequencyHz == term.frequencyHz
+    # Mode 3 plays at the same screen pace mode 1 would: a cycle in two seconds.
+    for _ in range(round(2 * 1000.0 / appConfig.animationIntervalMs)):
+        view.onTick()
+    assert abs(view.timeSeconds * term.frequencyHz - 1.0) < 0.02
+    view.shutdown()
+
+
+def testGoingBackToSuperpositionRestoresItsSettings(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+    controls.modeRows[1].amplitudeSpin.setValue(0.02)
+    controls.dampingSpin.setValue(0.05)
+    openStructureTab(view)
+
+    controls.tabs.setCurrentIndex(0)
+
+    assert not view.model.setup.singleMode
+    assert [term.modeNumber for term in view.model.terms] == [1, 2]
+    assert view.model.setup.dampingRatio == 0.05
+    assert view.model.referenceFrequencyHz == view.model.fundamentalFrequencyHz
+    view.shutdown()
+
+
+def testModeFrequenciesFollowTheStructure(qtbot) -> None:
+    view = makeView(qtbot)
+    tab = view.controls.structureTab
+
+    tab.thicknessSpin.setValue(0.006)
+    assert tab.modeCombo.itemText(0) == "Mode 1 (54.8 Hz)"
+
+    view.controls.kindCombo.setCurrentIndex(
+        list(StructureKind).index(StructureKind.simplySupportedBeam)
+    )
+    assert tab.modeCombo.itemText(0) == "Mode 1 (154 Hz)"
     view.shutdown()

@@ -26,7 +26,13 @@ The window opens where you last closed it, at the same size, and maximised if it
 
 ## Modal Superposition tab
 
-Below the Structure group are two tabs. The open one is underlined in the accent colour.
+Below the Structure group are two tabs. The open one is underlined in the accent colour, and
+it also decides what the 3D view animates:
+
+- **Modal Superposition** open: the modes in its table, added together, with its damping.
+- **Structure Parameters** open: the single mode chosen at the top of that tab, on its own.
+
+Switching tabs switches the animation straight away; each tab keeps its own settings.
 
 The top of the **Modal Superposition** tab sets what every mode shares:
 
@@ -45,12 +51,13 @@ Below that, up to three modes are superposed. For each row:
 
 ## Structure Parameters tab
 
-The structure's dimensions and material, in SI units. The values you leave here when you close
-the app become the defaults the next time it opens. The same values apply whichever **Type** you
+The mode to study on its own, and the structure's dimensions and material, in SI units. The dimensions and material you leave here when
+you close the app become the defaults the next time it opens; the mode starts at Mode 1. The same values apply whichever **Type** you
 choose, so switching type keeps them.
 
 | Control | Default | Meaning |
 |---------|---------|---------|
+| Mode | Mode 1 | Which of the first five modes to animate while this tab is open, each with its natural frequency in brackets. The frequencies update as you change the type, dimensions or material. The mode plays alone at 5 % of the length, undamped, and the slow motion follows it, so mode 5 is as easy to watch as mode 1 |
 | Length | 0.300 m | Along the span, x, from 1 cm to 10 m. Mode amplitudes are fractions of it, so a longer structure moves further |
 | Width | 0.0100 m | Across the span, y, from 1 mm to 5 m. On the plate it also decides which modes come first: a square plate has modes 2 and 3 at the same frequency |
 | Thickness | 0.0030 m | In the direction of vibration, z, from 0.1 mm to 0.5 m |

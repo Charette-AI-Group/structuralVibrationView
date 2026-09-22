@@ -45,6 +45,9 @@ defaultSize = StructureSize(length=0.3, width=0.01, thickness=0.003)
 defaultMaterial = MaterialProperties(density=2700.0, youngsModulus=7.0e10, poissonRatio=0.33)
 defaultStructureParameters = StructureParameters(size=defaultSize, material=defaultMaterial)
 
+# Peak displacement of a mode shown on its own, as a fraction of the length.
+singleModeAmplitude = 0.05
+
 # Grid points along x, y and z. Fixed per kind so a size change only moves
 # points, and the view can keep the mesh it already has.
 beamDimensions = (61, 5, 3)
@@ -233,10 +236,13 @@ def buildModel(setup: VibrationSetup) -> VibrationModel:
     checkMaterial(material)
     geometry = buildGeometry(setup.kind, size)
     terms = tuple(modalTerm(geometry, size, material, mode) for mode in setup.activeModes)
+    fundamental = naturalFrequencyHz(setup.kind, 1, size, material)
+    reference = terms[0].frequencyHz if setup.singleMode and terms else fundamental
     return VibrationModel(
         setup=setup,
         geometry=geometry,
-        fundamentalFrequencyHz=naturalFrequencyHz(setup.kind, 1, size, material),
+        fundamentalFrequencyHz=fundamental,
+        referenceFrequencyHz=reference,
         terms=terms,
     )
 

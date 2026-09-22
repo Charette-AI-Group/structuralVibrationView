@@ -245,24 +245,24 @@ def testStructureParametersSetAreTheDefaultsAtTheNextLaunch(qtbot) -> None:
     first = MainWindow()
     qtbot.addWidget(first)
     controls = first.vibrationView.controls
-    controls.lengthSpin.setValue(0.45)
-    controls.widthSpin.setValue(0.02)
-    controls.thicknessSpin.setValue(0.005)
-    controls.densitySpin.setValue(7850.0)
-    controls.youngsModulusSpin.setValue(2.1e11)
-    controls.poissonRatioSpin.setValue(0.30)
+    controls.structureTab.lengthSpin.setValue(0.45)
+    controls.structureTab.widthSpin.setValue(0.02)
+    controls.structureTab.thicknessSpin.setValue(0.005)
+    controls.structureTab.densitySpin.setValue(7850.0)
+    controls.structureTab.youngsModulusSpin.setValue(2.1e11)
+    controls.structureTab.poissonRatioSpin.setValue(0.30)
 
     first.close()
 
     reopened = MainWindow()
     qtbot.addWidget(reopened)
     again = reopened.vibrationView.controls
-    assert again.lengthSpin.value() == 0.45
-    assert again.widthSpin.value() == 0.02
-    assert again.thicknessSpin.value() == 0.005
-    assert again.densitySpin.value() == 7850.0
-    assert again.youngsModulusSpin.value() == 2.1e11
-    assert again.poissonRatioSpin.value() == 0.30
+    assert again.structureTab.lengthSpin.value() == 0.45
+    assert again.structureTab.widthSpin.value() == 0.02
+    assert again.structureTab.thicknessSpin.value() == 0.005
+    assert again.structureTab.densitySpin.value() == 7850.0
+    assert again.structureTab.youngsModulusSpin.value() == 2.1e11
+    assert again.structureTab.poissonRatioSpin.value() == 0.30
     # And the structure on screen is built from them, not from the old defaults.
     assert reopened.vibrationView.model.geometry.length == 0.45
     reopened.vibrationView.shutdown()
@@ -271,7 +271,7 @@ def testStructureParametersSetAreTheDefaultsAtTheNextLaunch(qtbot) -> None:
 def testASavedPresetMaterialReopensUnderItsName(qtbot) -> None:
     first = MainWindow()
     qtbot.addWidget(first)
-    combo = first.vibrationView.controls.materialCombo
+    combo = first.vibrationView.controls.structureTab.materialCombo
     index = combo.findText("Copper")
     combo.setCurrentIndex(index)
     combo.activated.emit(index)
@@ -280,5 +280,5 @@ def testASavedPresetMaterialReopensUnderItsName(qtbot) -> None:
 
     reopened = MainWindow()
     qtbot.addWidget(reopened)
-    assert reopened.vibrationView.controls.materialCombo.currentText() == "Copper"
+    assert reopened.vibrationView.controls.structureTab.materialCombo.currentText() == "Copper"
     reopened.vibrationView.shutdown()

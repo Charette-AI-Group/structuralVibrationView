@@ -160,7 +160,7 @@ class VibrationView(ReportingView):
         """
         if self.model is None:
             return 1.0
-        return appConfig.displayedFundamentalHz / self.model.fundamentalFrequencyHz
+        return appConfig.displayedFundamentalHz / self.model.referenceFrequencyHz
 
     def onTick(self) -> None:
         screenSeconds = appConfig.animationIntervalMs / 1000.0

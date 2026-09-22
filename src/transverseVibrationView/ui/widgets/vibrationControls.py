@@ -1,7 +1,9 @@
 """The control panel beside the 3D view: what to animate, and playback.
 
 Emits a whole `VibrationSetup` whenever any of its inputs change, so the view
-never reads widgets one by one. Playback (play, restart, speed, reset view)
+never reads widgets one by one. Which tab is open decides what that setup is:
+the Modal Superposition tab's mode rows, or the Structure Parameters tab's
+single mode. Playback (play, restart, speed, reset view)
 is emitted separately because it does not change the model.
 """
 
@@ -26,20 +28,17 @@ from PySide6.QtWidgets import (
 )
 
 from transverseVibrationView.models.vibrationModel import (
-    MaterialProperties,
     ModeSetting,
     StructureKind,
     StructureParameters,
-    StructureSize,
     VibrationSetup,
 )
 from transverseVibrationView.services import (
-    materialPresets,
     structureParametersService,
     vibrationService,
 )
 from transverseVibrationView.ui.widgets.fullWidthTabWidget import FullWidthTabWidget
-from transverseVibrationView.ui.widgets.scientificSpinBox import ScientificSpinBox
+from transverseVibrationView.ui.widgets.structureParametersTab import StructureParametersTab
 
 modeRowCount = 3
 playLabel = "Play"
@@ -117,12 +116,16 @@ class VibrationControls(QWidget):
         self.tabs = FullWidthTabWidget(labelScale=1.0)
         self.tabs.setObjectName("parameterTabs")
         self.tabs.addTab(self.buildModalSuperpositionTab(defaults), modalSuperpositionTabLabel)
-        self.tabs.addTab(
-            self.buildStructureParametersTab(saved), structureParametersTabLabel
-        )
+        self.structureTab = StructureParametersTab(saved)
+        self.structureTab.changed.connect(self.emitSetup)
+        self.tabs.addTab(self.structureTab, structureParametersTabLabel)
+        # The open tab chooses what is animated, so switching is a change.
+        self.tabs.currentChanged.connect(self.emitSetup)
         layout.addWidget(self.tabs)
         layout.addWidget(self.buildPlaybackGroup())
         layout.addStretch()
+
+        self.structureTab.refreshModeLabels(self.currentKind())
 
         # As wide as the widest row needs and no wider, so no value is cut off.
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
@@ -192,143 +195,6 @@ class VibrationControls(QWidget):
         layout.addStretch()
         return page
 
-    def buildStructureParametersTab(self, parameters: StructureParameters) -> QWidget:
-        """Dimensions and material, in SI units. Remembered between sessions."""
-        page = QWidget()
-        page.setObjectName("structureParametersPage")
-        layout = QVBoxLayout(page)
-        form = QFormLayout()
-        size, material = parameters.size, parameters.material
-
-        self.lengthSpin = self.makeSpin(
-            QDoubleSpinBox(), "lengthSpin", vibrationService.lengthRange, size.length,
-            "Length along the span, x. Amplitudes are fractions of it.",
-            suffix=" m", decimals=3, step=0.01,
-        )
-        form.addRow("Length", self.lengthSpin)
-        self.widthSpin = self.makeSpin(
-            QDoubleSpinBox(), "widthSpin", vibrationService.widthRange, size.width,
-            "Width across the span, y. On the plate it also sets which modes come first.",
-            suffix=" m", decimals=4, step=0.001,
-        )
-        form.addRow("Width", self.widthSpin)
-        self.thicknessSpin = self.makeSpin(
-            QDoubleSpinBox(), "thicknessSpin", vibrationService.thicknessRange,
-            size.thickness, "Thickness in the direction of vibration, z.",
-            suffix=" m", decimals=4, step=0.0005,
-        )
-        form.addRow("Thickness", self.thicknessSpin)
-
-        self.materialCombo = QComboBox()
-        self.materialCombo.setObjectName("materialCombo")
-        for name, preset in materialPresets.materialPresets:
-            self.materialCombo.addItem(name, name)
-        self.materialCombo.addItem(materialPresets.customMaterialName, None)
-        self.materialCombo.setToolTip(
-            "Fills in density, Young's modulus and Poisson's ratio with typical values.\n"
-            "Editing any of them by hand makes it Custom."
-        )
-        self.materialCombo.activated.connect(self.onMaterialChosen)
-        form.addRow("Material", self.materialCombo)
-
-        self.densitySpin = self.makeSpin(
-            QDoubleSpinBox(), "densitySpin", vibrationService.densityRange,
-            material.density, "Mass per unit volume. Aluminium is about 2700 kg/m³.",
-            suffix=" kg/m³", decimals=0, step=100.0,
-        )
-        form.addRow("Density", self.densitySpin)
-        self.youngsModulusSpin = self.makeSpin(
-            ScientificSpinBox(), "youngsModulusSpin", vibrationService.youngsModulusRange,
-            material.youngsModulus,
-            "Material stiffness, Young's modulus. Aluminium is about 7.0E+10 N/m². "
-            "Type it as 7e10 if you like.",
-            suffix=" N/m²",
-        )
-        form.addRow("Young's Modulus", self.youngsModulusSpin)
-        self.poissonRatioSpin = self.makeSpin(
-            QDoubleSpinBox(), "poissonRatioSpin", vibrationService.poissonRatioRange,
-            material.poissonRatio,
-            "Poisson's ratio: how much the material narrows as it stretches.\n"
-            "Aluminium is about 0.33, steel 0.30, rubber close to 0.5.\n"
-            "It changes the plate's frequencies only; a beam's bending ignores it.",
-            suffix="", decimals=3, step=0.01,
-        )
-        form.addRow("Poisson's Ratio", self.poissonRatioSpin)
-        for spin in self.materialSpins():
-            spin.valueChanged.connect(self.showMaterialName)
-        self.showMaterialName()
-        layout.addLayout(form)
-        layout.addStretch()
-        return page
-
-    def makeSpin(
-        self,
-        spin: QDoubleSpinBox,
-        objectName: str,
-        valueRange: tuple[float, float],
-        value: float,
-        toolTip: str,
-        suffix: str,
-        decimals: int | None = None,
-        step: float | None = None,
-    ) -> QDoubleSpinBox:
-        spin.setObjectName(objectName)
-        if decimals is not None:
-            spin.setDecimals(decimals)
-        spin.setRange(*valueRange)
-        if step is not None:
-            spin.setSingleStep(step)
-        spin.setSuffix(suffix)
-        spin.setValue(value)
-        spin.setToolTip(toolTip)
-        spin.valueChanged.connect(self.emitSetup)
-        return spin
-
-    def materialSpins(self) -> tuple[QDoubleSpinBox, ...]:
-        return (self.densitySpin, self.youngsModulusSpin, self.poissonRatioSpin)
-
-    def onMaterialChosen(self, index: int) -> None:
-        """A preset fills all three properties: one change, one setup."""
-        preset = materialPresets.presetNamed(self.materialCombo.itemData(index) or "")
-        if preset is None:  # Custom: keep whatever is there
-            return
-        for spin, value in zip(
-            self.materialSpins(),
-            (preset.density, preset.youngsModulus, preset.poissonRatio),
-            strict=True,
-        ):
-            blocked = spin.blockSignals(True)
-            spin.setValue(value)
-            spin.blockSignals(blocked)
-        self.showMaterialName()
-        self.emitSetup()
-
-    def showMaterialName(self) -> None:
-        """Name the preset the values match, or Custom when they match none."""
-        name = materialPresets.presetNameFor(self.currentMaterial())
-        index = self.materialCombo.findData(name)  # None finds the Custom entry
-        blocked = self.materialCombo.blockSignals(True)
-        self.materialCombo.setCurrentIndex(index)
-        self.materialCombo.blockSignals(blocked)
-
-    def currentSize(self) -> StructureSize:
-        return StructureSize(
-            length=self.lengthSpin.value(),
-            width=self.widthSpin.value(),
-            thickness=self.thicknessSpin.value(),
-        )
-
-    def currentMaterial(self) -> MaterialProperties:
-        return MaterialProperties(
-            density=self.densitySpin.value(),
-            youngsModulus=self.youngsModulusSpin.value(),
-            poissonRatio=self.poissonRatioSpin.value(),
-        )
-
-    def currentStructureParameters(self) -> StructureParameters:
-        """What the Structure Parameters tab shows now, for saving."""
-        return StructureParameters(size=self.currentSize(), material=self.currentMaterial())
-
     def buildPlaybackGroup(self) -> QGroupBox:
         group = QGroupBox("Playback")
         layout = QVBoxLayout(group)
@@ -385,17 +251,47 @@ class VibrationControls(QWidget):
         layout.addLayout(presets)
         return group
 
-    def currentSetup(self) -> VibrationSetup:
+    def currentKind(self) -> StructureKind:
         # Qt stores the enum as its string value, so it comes back as one.
+        return StructureKind(self.kindCombo.currentData())
+
+    def isSingleModeView(self) -> bool:
+        """True while the Structure Parameters tab is open."""
+        return self.tabs.currentWidget() is self.structureTab
+
+    def currentSetup(self) -> VibrationSetup:
+        size = self.structureTab.currentSize()
+        material = self.structureTab.currentMaterial()
+        if self.isSingleModeView():
+            # That tab alone: its mode at a fixed amplitude, undamped.
+            return VibrationSetup(
+                kind=self.currentKind(),
+                size=size,
+                material=material,
+                modes=(
+                    ModeSetting(
+                        self.structureTab.selectedMode(),
+                        vibrationService.singleModeAmplitude,
+                    ),
+                ),
+                dampingRatio=0.0,
+                singleMode=True,
+            )
         return VibrationSetup(
-            kind=StructureKind(self.kindCombo.currentData()),
-            size=self.currentSize(),
-            material=self.currentMaterial(),
+            kind=self.currentKind(),
+            size=size,
+            material=material,
             modes=tuple(row.setting() for row in self.modeRows),
             dampingRatio=self.dampingSpin.value(),
         )
 
+    def currentStructureParameters(self) -> StructureParameters:
+        """What the Structure Parameters tab shows now, for saving."""
+        return self.structureTab.currentStructureParameters()
+
     def emitSetup(self) -> None:
+        # Frequencies follow the kind, size and material, so relabel first.
+        self.structureTab.refreshModeLabels(self.currentKind())
         self.setupChanged.emit(self.currentSetup())
 
     def onPlayToggled(self, playing: bool) -> None:

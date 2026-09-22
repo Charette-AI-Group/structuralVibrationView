@@ -82,6 +82,8 @@ class VibrationSetup:
         ModeSetting(3, 0.0),
     )
     dampingRatio: float = 0.0
+    # One mode studied on its own: the animation is paced by that mode, not mode 1.
+    singleMode: bool = False
 
     @property
     def activeModes(self) -> tuple[ModeSetting, ...]:
@@ -137,6 +139,9 @@ class VibrationModel:
     geometry: StructureGeometry
     # Mode 1, computed from the material and dimensions, active or not.
     fundamentalFrequencyHz: float
+    # The frequency the slow motion is set by: the fundamental, or the mode
+    # shown when a single mode is.
+    referenceFrequencyHz: float
     terms: tuple[ModalTerm, ...] = field(default_factory=tuple)
 
     @property

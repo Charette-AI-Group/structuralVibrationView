@@ -347,3 +347,14 @@ def testPoissonsRatioStiffensThePlateOnly() -> None:
         assert vibrationService.naturalFrequencyHz(
             beam, 1, size, rubbery
         ) == vibrationService.naturalFrequencyHz(beam, 1, size, cork)
+
+
+def testASingleModeSetupIsPacedByItsOwnMode() -> None:
+    single = vibrationService.buildModel(
+        VibrationSetup(modes=(ModeSetting(4, 0.05),), singleMode=True)
+    )
+    superposed = vibrationService.buildModel(VibrationSetup(modes=(ModeSetting(4, 0.05),)))
+
+    assert single.referenceFrequencyHz == single.terms[0].frequencyHz
+    assert single.referenceFrequencyHz > single.fundamentalFrequencyHz
+    assert superposed.referenceFrequencyHz == superposed.fundamentalFrequencyHz
