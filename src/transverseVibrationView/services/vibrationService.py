@@ -5,9 +5,12 @@ gives the displacement field at any instant. Pure NumPy so it is testable
 without a window and could drive any renderer.
 
 Beam modes are Euler-Bernoulli; the plate is a simply supported Kirchhoff
-plate. Frequencies are relative to the fundamental the user sets, using the
-theoretical ratios, so the demo stays honest about which mode moves faster
-without needing material properties.
+plate. Natural frequencies come from the material (density, Young's modulus)
+and the dimensions, with the boundary conditions of the chosen kind:
+
+    beam   omega_n  = (beta_n L)^2 / L^2 * sqrt(E I / (rho A)),  I / A = t^2 / 12
+    plate  omega_mn = pi^2 ((m/a)^2 + (n/b)^2) * sqrt(D / (rho h)),
+           D = E h^3 / (12 (1 - nu^2))
 """
 
 from __future__ import annotations
@@ -27,6 +30,11 @@ from transverseVibrationView.models.vibrationModel import (
     VibrationModel,
     VibrationSetup,
 )
+
+# Poisson's ratio for the plate's bending stiffness. Not an input: aluminium's
+# value, and between 0.25 and 0.35 for most metals it moves the plate's
+# frequencies by under 3 %.
+poissonRatio = 0.33
 
 # Roots of the beam frequency equations, beta * L, for the first six modes.
 cantileverRoots = (1.8751, 4.6941, 7.8548, 10.9955, 14.1372, 17.2788)
@@ -147,26 +155,68 @@ def normalise(shape: np.ndarray) -> np.ndarray:
     return shape / peak if peak > 0.0 else shape
 
 
-def modalTerm(setup: VibrationSetup, geometry: StructureGeometry, mode: ModeSetting) -> ModalTerm:
+def beamNaturalFrequencyHz(
+    kind: StructureKind, modeNumber: int, size: StructureSize, material: MaterialProperties
+) -> float:
+    """Euler-Bernoulli: f_n = (beta_n L)^2 / (2 pi L^2) * sqrt(E I / (rho A)).
+
+    For a rectangular section I / A = t^2 / 12, so the width cancels: a beam's
+    frequencies depend on its length and thickness, not on how wide it is.
+    """
+    if kind is StructureKind.simplySupportedBeam:
+        betaL = modeNumber * math.pi
+    else:
+        roots = cantileverRoots if kind is StructureKind.cantileverBeam else clampedRoots
+        betaL = roots[modeNumber - 1]
+    stiffnessPerMass = material.youngsModulus * size.thickness**2 / (12.0 * material.density)
+    omega = betaL**2 / size.length**2 * math.sqrt(stiffnessPerMass)
+    return omega / (2.0 * math.pi)
+
+
+def plateNaturalFrequencyHz(
+    mn: tuple[int, int], size: StructureSize, material: MaterialProperties
+) -> float:
+    """Kirchhoff, simply supported: f_mn = (pi / 2) ((m/a)^2 + (n/b)^2) sqrt(D / (rho h))."""
+    h = size.thickness
+    bendingStiffness = material.youngsModulus * h**3 / (12.0 * (1.0 - poissonRatio**2))
+    omega = (
+        math.pi**2
+        * plateFrequencyParameter(mn, size.length, size.width)
+        * math.sqrt(bendingStiffness / (material.density * h))
+    )
+    return omega / (2.0 * math.pi)
+
+
+def naturalFrequencyHz(
+    kind: StructureKind, modeNumber: int, size: StructureSize, material: MaterialProperties
+) -> float:
+    """Mode `modeNumber` (1 is the lowest) of the given structure, in hertz."""
+    if kind.isPlate:
+        mn = plateModeOrder(size.length, size.width)[modeNumber - 1]
+        return plateNaturalFrequencyHz(mn, size, material)
+    return beamNaturalFrequencyHz(kind, modeNumber, size, material)
+
+
+def modalTerm(
+    geometry: StructureGeometry,
+    size: StructureSize,
+    material: MaterialProperties,
+    mode: ModeSetting,
+) -> ModalTerm:
     """Evaluate one mode on the geometry, with its frequency and label."""
     modeNumber = min(max(mode.modeNumber, 1), maxModeNumber)
     if geometry.kind.isPlate:
         order = plateModeOrder(geometry.length, geometry.width)
         mn = order[modeNumber - 1]
         shape = plateModeShape(mn, geometry.x, geometry.y, geometry.length, geometry.width)
-        ratio = math.sqrt(
-            plateFrequencyParameter(mn, geometry.length, geometry.width)
-            / plateFrequencyParameter(order[0], geometry.length, geometry.width)
-        )
         label = f"Mode {modeNumber} ({mn[0]},{mn[1]})"
     else:
         shape = beamModeShape(geometry.kind, modeNumber, geometry.x, geometry.length)
-        ratio = beamFrequencyRatio(geometry.kind, modeNumber)
         label = f"Mode {modeNumber}"
     return ModalTerm(
         modeNumber=modeNumber,
         label=label,
-        frequencyHz=setup.fundamentalFrequencyHz * ratio,
+        frequencyHz=naturalFrequencyHz(geometry.kind, modeNumber, size, material),
         amplitude=mode.amplitude,
         phaseRadians=math.radians(mode.phaseDegrees),
         shape=shape,
@@ -174,10 +224,17 @@ def modalTerm(setup: VibrationSetup, geometry: StructureGeometry, mode: ModeSett
 
 
 def buildModel(setup: VibrationSetup) -> VibrationModel:
-    checkMaterial(setup.material or defaultMaterial)
-    geometry = buildGeometry(setup.kind, setup.size)
-    terms = tuple(modalTerm(setup, geometry, mode) for mode in setup.activeModes)
-    return VibrationModel(setup=setup, geometry=geometry, terms=terms)
+    size = setup.size or defaultSize
+    material = setup.material or defaultMaterial
+    checkMaterial(material)
+    geometry = buildGeometry(setup.kind, size)
+    terms = tuple(modalTerm(geometry, size, material, mode) for mode in setup.activeModes)
+    return VibrationModel(
+        setup=setup,
+        geometry=geometry,
+        fundamentalFrequencyHz=naturalFrequencyHz(setup.kind, 1, size, material),
+        terms=terms,
+    )
 
 
 def displacementAt(model: VibrationModel, timeSeconds: float) -> np.ndarray:
@@ -211,5 +268,16 @@ def describeModel(model: VibrationModel) -> str:
     """One line for the status bar: what is moving and how fast."""
     if not model.terms:
         return f"{model.setup.kind.value}: no mode has an amplitude, so nothing moves."
-    parts = [f"{term.label} at {term.frequencyHz:.2f} Hz" for term in model.terms]
+    parts = [f"{term.label} at {formatFrequency(term.frequencyHz)}" for term in model.terms]
     return f"{model.setup.kind.value}: " + ", ".join(parts)
+
+
+def formatFrequency(hertz: float) -> str:
+    """Three significant figures, in Hz or kHz, never in exponent notation."""
+    if hertz >= 1000.0:
+        return f"{hertz / 1000.0:.3g} kHz"
+    if hertz >= 100.0:
+        return f"{hertz:.0f} Hz"
+    if hertz >= 10.0:
+        return f"{hertz:.1f} Hz"
+    return f"{hertz:.2f} Hz"

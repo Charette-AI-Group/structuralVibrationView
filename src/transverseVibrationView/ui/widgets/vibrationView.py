@@ -99,6 +99,7 @@ class VibrationView(ReportingView):
         else:
             self.updateColourRange()
         self.updateFrame()
+        self.controls.showFundamental(model.fundamentalFrequencyHz)
         self.description = vibrationService.describeModel(model)
         self.reportStatus(self.description)
 
@@ -151,8 +152,19 @@ class VibrationView(ReportingView):
 
     # ----- animation -------------------------------------------------------
 
+    def slowMotionFactor(self) -> float:
+        """Structural seconds per screen second at Speed 1x.
+
+        Chosen so mode 1 appears at `displayedFundamentalHz` whatever its real
+        frequency, so a stiffer or shorter structure is not a blur.
+        """
+        if self.model is None:
+            return 1.0
+        return appConfig.displayedFundamentalHz / self.model.fundamentalFrequencyHz
+
     def onTick(self) -> None:
-        self.timeSeconds += self.speed * appConfig.animationIntervalMs / 1000.0
+        screenSeconds = appConfig.animationIntervalMs / 1000.0
+        self.timeSeconds += self.speed * self.slowMotionFactor() * screenSeconds
         self.updateFrame()
 
     def updateFrame(self) -> None:

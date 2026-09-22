@@ -32,7 +32,7 @@ The top of the **Modal Superposition** tab sets what every mode shares:
 
 | Control | Meaning |
 |---------|---------|
-| Fundamental | Frequency of mode 1 in hertz. Higher modes are scaled from it using theory, so mode 2 of a cantilever runs at about 6.3 times this value |
+| Fundamental | The natural frequency of mode 1, computed from the Structure Parameters and the type's boundary conditions. Read-only: change the dimensions or material to change it. The status bar shows the computed frequency of every active mode |
 | Damping Ratio | 0 keeps the motion going forever. Anything above 0 makes it decay; press **Restart** to kick it again |
 
 Below that, up to three modes are superposed. For each row:
@@ -58,16 +58,21 @@ choose, so switching type keeps them.
 | Young's Modulus | 7.00E+10 N/m² | The material stiffness, aluminium by default. Type it as `7e10`, `7.0E+10` or in full; the arrows step the second digit, 7.00E+10 to 7.10E+10 |
 
 The 3D view follows a change of dimension straight away and keeps the camera where you left it;
-press **Reset View** to fit the new size. Density and Young's modulus are stored with the
-structure, but the animation frequencies still come from **Fundamental** on the Modal
-Superposition tab.
+press **Reset View** to fit the new size.
+
+All five values set the natural frequencies. The beams use Euler-Bernoulli theory, where the
+frequency grows with thickness and the square root of stiffness over density, and falls with
+the square of the length; the width of a beam does not change its frequencies. The plate uses
+Kirchhoff plate theory with a Poisson's ratio of 0.33, so its narrower side matters most: the
+default 1 cm wide strip, held on all four edges, vibrates at tens of kilohertz. Widen it to see
+plate-like frequencies.
 
 ## Playback
 
 | Control | Meaning |
 |---------|---------|
-| Speed | Multiplies the clock. Set it below 1 to watch a fast mode, or above 1 to see damping run out |
-| Time | The animation clock, in seconds of structural time |
+| Speed | Real vibrations are far too fast to see, so the animation runs in slow motion. At 1x, mode 1 takes two seconds per cycle on screen whatever its real frequency. Set it lower to follow a higher mode, or higher to see damping run out |
+| Time | Real time in the structure, not time on screen: milliseconds while under a second |
 | Pause / Play | Freezes the structure at the current instant. You can still rotate it |
 | Restart | Puts the clock back to zero, which is when every mode is at its peak |
 | Reset View | Returns the camera to the three-quarter starting view and fits the structure |

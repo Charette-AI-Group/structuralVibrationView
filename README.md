@@ -4,8 +4,9 @@
 
 A beam or plate vibrates in a 3D view you can rotate, pan and zoom while it moves. Up to
 three closed-form modes are superposed (Euler-Bernoulli beams, a simply supported Kirchhoff
-plate), with the fundamental frequency, damping ratio, amplitudes and phases set from a
-control panel. The rendering is PyVista (VTK) embedded in Qt through `pyvistaqt`'s
+plate). Natural frequencies are computed from the dimensions, density and Young's modulus;
+the damping ratio, amplitudes and phases are set from a control panel. The animation runs in
+slow motion so that mode 1 always plays at one cycle every two seconds at Speed 1x. The rendering is PyVista (VTK) embedded in Qt through `pyvistaqt`'s
 `QtInteractor`; a `QTimer` advances a continuous clock and each tick moves the points of the
 mesh already on screen. See `docs/manual/README.md` for the controls.
 

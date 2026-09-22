@@ -59,7 +59,7 @@ def testATickMovesTheMesh(qtbot) -> None:
     assert view.timeSeconds > 0.0
     assert view.frameCount == frames + 1
     assert not np.array_equal(np.array(view.mesh.points), before)
-    assert view.controls.timeLabel.text().startswith("t = 0.0")
+    assert view.controls.timeLabel.text().endswith(" ms")
     view.shutdown()
 
 
@@ -71,7 +71,7 @@ def testRestartPutsTheClockBackToZero(qtbot) -> None:
     view.controls.restartButton.click()
 
     assert view.timeSeconds == 0.0
-    assert view.controls.timeLabel.text() == "t = 0.00 s"
+    assert view.controls.timeLabel.text() == "t = 0.0 ms"
     view.shutdown()
 
 
@@ -125,10 +125,10 @@ def testControlsEmitAWholeSetup(qtbot) -> None:
     setups = []
     view.controls.setupChanged.connect(setups.append)
 
-    view.controls.frequencySpin.setValue(1.5)
+    view.controls.dampingSpin.setValue(0.05)
 
     assert len(setups) == 1
-    assert setups[0].fundamentalFrequencyHz == 1.5
+    assert setups[0].dampingRatio == 0.05
     assert setups[0].kind is StructureKind.cantileverBeam
     assert len(setups[0].modes) == 3
     view.shutdown()
@@ -199,13 +199,13 @@ def testTheModalControlsLiveOnTheFirstTab(qtbot) -> None:
     controls = view.controls
     firstPage = controls.tabs.widget(0)
 
-    widgets = [controls.frequencySpin, controls.dampingSpin]
+    widgets = [controls.fundamentalLabel, controls.dampingSpin]
     for row in controls.modeRows:
         widgets += list(row.widgets())
     for widget in widgets:
         assert firstPage.isAncestorOf(widget), widget.objectName()
     # Fundamental and damping stay above the mode table.
-    assert controls.frequencySpin.y() < controls.dampingSpin.y()
+    assert controls.fundamentalLabel.y() < controls.dampingSpin.y()
     assert controls.dampingSpin.y() < controls.modeRows[0].numberSpin.y()
     view.shutdown()
 
@@ -291,4 +291,46 @@ def testMaterialChangesReachTheSetup(qtbot) -> None:
 
     assert setups[-1].material.youngsModulus == 2.1e11
     assert view.model.setup.material.youngsModulus == 2.1e11
+    view.shutdown()
+
+
+
+def testTheFundamentalIsComputedAndShown(qtbot) -> None:
+    view = makeView(qtbot)
+    label = view.controls.fundamentalLabel
+
+    assert label.text() == "27.4 Hz"
+
+    view.controls.thicknessSpin.setValue(0.006)
+
+    # Twice as thick, twice the frequency.
+    assert label.text() == "54.8 Hz"
+    view.shutdown()
+
+
+def testAtSpeedOneMode1TakesTwoScreenSecondsPerCycle(qtbot) -> None:
+    """Slow motion is set by the physics, so a stiff structure is not a blur."""
+    from transverseVibrationView import appConfig
+
+    view = makeView(qtbot)
+    ticksPerScreenSecond = 1000.0 / appConfig.animationIntervalMs
+
+    for _ in range(round(2 * ticksPerScreenSecond)):
+        view.onTick()
+
+    cycles = view.timeSeconds * view.model.fundamentalFrequencyHz
+    assert abs(cycles - 1.0) < 0.02
+    view.shutdown()
+
+
+def testAStifferStructureStillPlaysAtTheSameScreenPace(qtbot) -> None:
+    view = makeView(qtbot)
+    view.onTick()
+    cyclesPerTick = view.timeSeconds * view.model.fundamentalFrequencyHz
+
+    view.restart()
+    view.controls.youngsModulusSpin.setValue(2.8e11)
+    view.onTick()
+
+    assert np.isclose(view.timeSeconds * view.model.fundamentalFrequencyHz, cyclesPerTick)
     view.shutdown()

@@ -98,7 +98,7 @@ def testModesWithZeroAmplitudeAreDropped() -> None:
     model = vibrationService.buildModel(setup)
 
     assert [term.modeNumber for term in model.terms] == [1, 3]
-    assert model.terms[0].frequencyHz == setup.fundamentalFrequencyHz
+    assert model.terms[0].frequencyHz == model.fundamentalFrequencyHz
     assert model.terms[1].frequencyHz > model.terms[0].frequencyHz
 
 
@@ -114,22 +114,22 @@ def testDisplacementStartsAtFullAmplitudeAndOnlyMovesAlongZ() -> None:
 
 
 def testAQuarterPeriodLaterTheFirstModeIsFlat() -> None:
-    setup = VibrationSetup(fundamentalFrequencyHz=1.0, modes=(ModeSetting(1, 0.1),))
+    setup = VibrationSetup(modes=(ModeSetting(1, 0.1),))
     model = vibrationService.buildModel(setup)
 
-    w = vibrationService.displacementAt(model, 0.25)
+    w = vibrationService.displacementAt(model, 0.25 / model.fundamentalFrequencyHz)
 
     assert np.allclose(w, 0.0, atol=1e-9)
 
 
 def testDampingDecaysTheMotion() -> None:
-    undamped = vibrationService.buildModel(VibrationSetup(fundamentalFrequencyHz=1.0))
-    damped = vibrationService.buildModel(
-        VibrationSetup(fundamentalFrequencyHz=1.0, dampingRatio=0.1)
-    )
+    undamped = vibrationService.buildModel(VibrationSetup())
+    damped = vibrationService.buildModel(VibrationSetup(dampingRatio=0.1))
+    # Three whole cycles in, where the undamped beam is back at its peak.
+    later = 3.0 / undamped.fundamentalFrequencyHz
 
-    peakUndamped = float(np.max(np.abs(vibrationService.displacementAt(undamped, 3.0))))
-    peakDamped = float(np.max(np.abs(vibrationService.displacementAt(damped, 3.0))))
+    peakUndamped = float(np.max(np.abs(vibrationService.displacementAt(undamped, later))))
+    peakDamped = float(np.max(np.abs(vibrationService.displacementAt(damped, later))))
 
     assert peakDamped < peakUndamped
     assert peakDamped > 0.0
@@ -138,7 +138,7 @@ def testDampingDecaysTheMotion() -> None:
 def testDescriptionNamesTheModesAndTheirFrequencies() -> None:
     model = vibrationService.buildModel(VibrationSetup())
     text = vibrationService.describeModel(model)
-    assert text.startswith("Cantilever Beam: Mode 1 at 0.50 Hz")
+    assert text == "Cantilever Beam: Mode 1 at 27.4 Hz"
 
     silent = vibrationService.buildModel(VibrationSetup(modes=(ModeSetting(1, 0.0),)))
     assert "nothing moves" in vibrationService.describeModel(silent)
@@ -224,3 +224,104 @@ def testASquarePlateHasItsTwoSecondModesAtTheSameFrequency() -> None:
 def testASizeOutsideItsRangeIsRefusedByName(size, name) -> None:
     with pytest.raises(ValueError, match=name):
         vibrationService.buildGeometry(StructureKind.cantileverBeam, size)
+
+
+# ----- natural frequencies from material and dimensions -------------------
+
+aluminium = MaterialProperties(density=2700.0, youngsModulus=7.0e10)
+steel = MaterialProperties(density=7850.0, youngsModulus=2.1e11)
+
+
+def textbookBeamHz(coefficient: float, size: StructureSize, material: MaterialProperties) -> float:
+    """f = C sqrt(E I / (rho A L^4)), the handbook form with its tabulated C."""
+    inertia = size.width * size.thickness**3 / 12.0
+    area = size.width * size.thickness
+    return coefficient * math.sqrt(
+        material.youngsModulus * inertia / (material.density * area * size.length**4)
+    )
+
+
+@pytest.mark.parametrize(
+    "kind, coefficient",
+    [
+        # Handbook values of (beta_1 L)^2 / (2 pi) for the first mode.
+        (StructureKind.cantileverBeam, 0.5596),
+        (StructureKind.simplySupportedBeam, 1.5708),
+        (StructureKind.clampedBeam, 3.5608),
+    ],
+)
+def testBeamFundamentalsMatchTheHandbook(kind, coefficient) -> None:
+    size = StructureSize(length=0.5, width=0.04, thickness=0.006)
+
+    computed = vibrationService.naturalFrequencyHz(kind, 1, size, steel)
+
+    assert math.isclose(computed, textbookBeamHz(coefficient, size, steel), rel_tol=1e-3)
+
+
+def testTheDefaultAluminiumCantileverIsAbout27Hz() -> None:
+    model = vibrationService.buildModel(VibrationSetup())
+
+    assert math.isclose(model.fundamentalFrequencyHz, 27.42, rel_tol=1e-3)
+
+
+def testASquarePlateFundamentalMatchesTheClosedForm() -> None:
+    """Simply supported square: f_11 = (pi / a^2) sqrt(D / (rho h))."""
+    size = StructureSize(length=0.4, width=0.4, thickness=0.002)
+    nu = vibrationService.poissonRatio
+    flexural = aluminium.youngsModulus * size.thickness**3 / (12 * (1 - nu**2))
+    expected = math.pi / size.length**2 * math.sqrt(flexural / (aluminium.density * size.thickness))
+
+    computed = vibrationService.naturalFrequencyHz(
+        StructureKind.simplySupportedPlate, 1, size, aluminium
+    )
+
+    assert math.isclose(computed, expected, rel_tol=1e-9)
+
+
+def testBeamFrequencyScalesWithThicknessOverLengthSquared() -> None:
+    kind = StructureKind.cantileverBeam
+    base = StructureSize(0.3, 0.01, 0.003)
+    f = vibrationService.naturalFrequencyHz(kind, 1, base, aluminium)
+
+    twiceAsThick = vibrationService.naturalFrequencyHz(
+        kind, 1, StructureSize(0.3, 0.01, 0.006), aluminium
+    )
+    twiceAsLong = vibrationService.naturalFrequencyHz(
+        kind, 1, StructureSize(0.6, 0.01, 0.003), aluminium
+    )
+    twiceAsWide = vibrationService.naturalFrequencyHz(
+        kind, 1, StructureSize(0.3, 0.02, 0.003), aluminium
+    )
+
+    assert math.isclose(twiceAsThick, 2 * f)
+    assert math.isclose(twiceAsLong, f / 4)
+    # Width cancels out of I / A for a rectangular beam.
+    assert math.isclose(twiceAsWide, f)
+
+
+def testFrequencyScalesWithTheSquareRootOfStiffnessOverDensity() -> None:
+    size = StructureSize(0.3, 0.2, 0.003)
+    stiffer = MaterialProperties(density=2700.0, youngsModulus=4 * 7.0e10)
+    for kind in StructureKind:
+        f = vibrationService.naturalFrequencyHz(kind, 1, size, aluminium)
+        assert math.isclose(
+            vibrationService.naturalFrequencyHz(kind, 1, size, stiffer), 2 * f
+        ), kind
+
+
+def testHigherBeamModesKeepTheTheoreticalRatios() -> None:
+    size = StructureSize(0.3, 0.01, 0.003)
+    for kind in (StructureKind.cantileverBeam, StructureKind.clampedBeam,
+                 StructureKind.simplySupportedBeam):
+        f1 = vibrationService.naturalFrequencyHz(kind, 1, size, aluminium)
+        for mode in (2, 3):
+            fn = vibrationService.naturalFrequencyHz(kind, mode, size, aluminium)
+            assert math.isclose(fn / f1, vibrationService.beamFrequencyRatio(kind, mode))
+
+
+@pytest.mark.parametrize(
+    "hertz, text",
+    [(0.5, "0.50 Hz"), (27.42, "27.4 Hz"), (171.9, "172 Hz"), (73457.6, "73.5 kHz")],
+)
+def testFrequenciesReadAsThreeFigures(hertz, text) -> None:
+    assert vibrationService.formatFrequency(hertz) == text

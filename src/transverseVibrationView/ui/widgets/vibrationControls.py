@@ -144,18 +144,14 @@ class VibrationControls(QWidget):
 
         # The clock and the decay apply to every mode, so they sit above the table.
         form = QFormLayout()
-        self.frequencySpin = QDoubleSpinBox()
-        self.frequencySpin.setObjectName("frequencySpin")
-        self.frequencySpin.setRange(0.05, 5.0)
-        self.frequencySpin.setSingleStep(0.1)
-        self.frequencySpin.setDecimals(2)
-        self.frequencySpin.setSuffix(" Hz")
-        self.frequencySpin.setValue(defaults.fundamentalFrequencyHz)
-        self.frequencySpin.setToolTip(
-            "Frequency of mode 1. Higher modes follow beam and plate theory."
+        # Computed, not chosen: the view fills it in from the model.
+        self.fundamentalLabel = QLabel("")
+        self.fundamentalLabel.setObjectName("fundamentalLabel")
+        self.fundamentalLabel.setToolTip(
+            "Natural frequency of mode 1, computed from the Structure Parameters\n"
+            "and the type's boundary conditions. Higher modes are computed the same way."
         )
-        self.frequencySpin.valueChanged.connect(self.emitSetup)
-        form.addRow("Fundamental", self.frequencySpin)
+        form.addRow("Fundamental", self.fundamentalLabel)
 
         self.dampingSpin = QDoubleSpinBox()
         self.dampingSpin.setObjectName("dampingSpin")
@@ -289,11 +285,15 @@ class VibrationControls(QWidget):
         self.speedSpin.setDecimals(2)
         self.speedSpin.setSuffix("x")
         self.speedSpin.setValue(1.0)
-        self.speedSpin.setToolTip("Slow the clock down to watch a fast mode.")
+        self.speedSpin.setToolTip(
+            "Real vibrations are too fast to see, so the animation runs in slow motion.\n"
+            "At 1x, mode 1 takes two seconds per cycle whatever its real frequency."
+        )
         self.speedSpin.valueChanged.connect(self.speedChanged)
         form.addRow("Speed", self.speedSpin)
 
-        self.timeLabel = QLabel("t = 0.00 s")
+        self.timeLabel = QLabel(formatTime(0.0))
+        self.timeLabel.setToolTip("Real time in the structure, not time on screen.")
         self.timeLabel.setObjectName("timeLabel")
         form.addRow("Time", self.timeLabel)
         layout.addLayout(form)
@@ -336,7 +336,6 @@ class VibrationControls(QWidget):
             size=self.currentSize(),
             material=self.currentMaterial(),
             modes=tuple(row.setting() for row in self.modeRows),
-            fundamentalFrequencyHz=self.frequencySpin.value(),
             dampingRatio=self.dampingSpin.value(),
         )
 
@@ -348,4 +347,14 @@ class VibrationControls(QWidget):
         self.playToggled.emit(playing)
 
     def showTime(self, timeSeconds: float) -> None:
-        self.timeLabel.setText(f"t = {timeSeconds:.2f} s")
+        self.timeLabel.setText(formatTime(timeSeconds))
+
+    def showFundamental(self, hertz: float) -> None:
+        self.fundamentalLabel.setText(vibrationService.formatFrequency(hertz))
+
+
+def formatTime(timeSeconds: float) -> str:
+    """Structural time: milliseconds while short, since most modes are fast."""
+    if timeSeconds < 1.0:
+        return f"t = {timeSeconds * 1000.0:.1f} ms"
+    return f"t = {timeSeconds:.3f} s"

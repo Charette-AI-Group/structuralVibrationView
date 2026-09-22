@@ -51,3 +51,7 @@ defaultWindowHeight = 760
 # The animation clock. 33 ms is 30 frames per second, smooth enough for a
 # rotation and cheap enough that the view stays responsive on a laptop.
 animationIntervalMs = 33
+# Real structures vibrate far faster than a screen can show, so the animation
+# runs in slow motion: at Speed 1x, mode 1 appears at this frequency whatever
+# its real one. Half a hertz is a cycle every two seconds, easy to follow.
+displayedFundamentalHz = 0.5

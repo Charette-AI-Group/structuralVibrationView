@@ -79,8 +79,6 @@ class VibrationSetup:
         ModeSetting(2, 0.0),
         ModeSetting(3, 0.0),
     )
-    # The fundamental frequency sets the clock; higher modes follow theory.
-    fundamentalFrequencyHz: float = 0.5
     dampingRatio: float = 0.0
 
     @property
@@ -135,6 +133,8 @@ class VibrationModel:
 
     setup: VibrationSetup
     geometry: StructureGeometry
+    # Mode 1, computed from the material and dimensions, active or not.
+    fundamentalFrequencyHz: float
     terms: tuple[ModalTerm, ...] = field(default_factory=tuple)
 
     @property
