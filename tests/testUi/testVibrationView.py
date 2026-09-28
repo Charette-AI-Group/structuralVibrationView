@@ -25,7 +25,7 @@ def makeView(qtbot) -> VibrationView:
     return view
 
 
-def testTheViewOpensWithABeamOnScreen(qtbot) -> None:
+def testTheViewOpensWithABeamOnScreen(qtbot, onScreen) -> None:
     view = makeView(qtbot)
     view.show()
 
@@ -135,7 +135,7 @@ def testControlsEmitAWholeSetup(qtbot) -> None:
     view.shutdown()
 
 
-def testThePlaybackGroupEndsWithThreePresetViewButtons(qtbot) -> None:
+def testThePlaybackGroupEndsWithThreePresetViewButtons(qtbot, onScreen) -> None:
     view = makeView(qtbot)
     # Positions are only laid out once the widget is on screen.
     view.show()
@@ -155,7 +155,7 @@ def testThePlaybackGroupEndsWithThreePresetViewButtons(qtbot) -> None:
     view.shutdown()
 
 
-def testEachPresetLooksAlongTheAxisNormalToItsPlane(qtbot) -> None:
+def testEachPresetLooksAlongTheAxisNormalToItsPlane(qtbot, onScreen) -> None:
     view = makeView(qtbot)
     view.show()
     statuses: list[str] = []
@@ -193,7 +193,7 @@ def testModalSuperpositionIsTheFirstOfTwoTabs(qtbot) -> None:
     view.shutdown()
 
 
-def testTheModalControlsLiveOnTheFirstTab(qtbot) -> None:
+def testTheModalControlsLiveOnTheFirstTab(qtbot, onScreen) -> None:
     view = makeView(qtbot)
     view.show()
     qtbot.waitExposed(view)
@@ -220,7 +220,7 @@ def testTheOpenTabIsUnderlinedInTheAccent(qtbot) -> None:
     view.shutdown()
 
 
-def testAmplitudeBoxesAreWideEnoughForThreeDecimals(qtbot) -> None:
+def testAmplitudeBoxesAreWideEnoughForThreeDecimals(qtbot, onScreen) -> None:
     view = makeView(qtbot)
     view.show()
     qtbot.waitExposed(view)
@@ -364,7 +364,7 @@ def selectMaterial(controls, name: str) -> None:
     controls.structureTab.materialCombo.activated.emit(index)
 
 
-def testTheMaterialDropdownSitsAboveDensityAndStartsOnAluminium(qtbot) -> None:
+def testTheMaterialDropdownSitsAboveDensityAndStartsOnAluminium(qtbot, onScreen) -> None:
     view = makeView(qtbot)
     view.show()
     qtbot.waitExposed(view)
@@ -440,7 +440,7 @@ def openStructureTab(view) -> None:
     view.controls.tabs.setCurrentIndex(1)
 
 
-def testTheModeDropdownIsFirstAndListsFiveModesWithFrequencies(qtbot) -> None:
+def testTheModeDropdownIsFirstAndListsFiveModesWithFrequencies(qtbot, onScreen) -> None:
     view = makeView(qtbot)
     view.show()
     qtbot.waitExposed(view)
@@ -768,7 +768,7 @@ def testItOffersOneModeAndTheBeamsSix(qtbot) -> None:
     view.shutdown()
 
 
-def testTheStiffnessRowAppearsOnlyForTheOscillator(qtbot) -> None:
+def testTheStiffnessRowAppearsOnlyForTheOscillator(qtbot, onScreen) -> None:
     view = makeView(qtbot)
     view.show()
     qtbot.waitExposed(view)

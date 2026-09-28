@@ -15,7 +15,7 @@ def tabsFillHalves(tabWidget: FullWidthTabWidget) -> bool:
     )
 
 
-def testTabsShareWidthEqually(qtbot) -> None:
+def testTabsShareWidthEqually(qtbot, onScreen) -> None:
     tabWidget = FullWidthTabWidget()
     qtbot.addWidget(tabWidget)
     tabWidget.addTab(QWidget(), "First")
@@ -26,7 +26,7 @@ def testTabsShareWidthEqually(qtbot) -> None:
     qtbot.waitUntil(lambda: tabsFillHalves(tabWidget), timeout=5000)
 
 
-def testTabsKeepEqualShareAfterResize(qtbot) -> None:
+def testTabsKeepEqualShareAfterResize(qtbot, onScreen) -> None:
     tabWidget = FullWidthTabWidget()
     qtbot.addWidget(tabWidget)
     tabWidget.addTab(QWidget(), "First")
@@ -40,7 +40,7 @@ def testTabsKeepEqualShareAfterResize(qtbot) -> None:
     qtbot.waitUntil(lambda: tabsFillHalves(tabWidget), timeout=5000)
 
 
-def testThreeTabsShareThirds(qtbot) -> None:
+def testThreeTabsShareThirds(qtbot, onScreen) -> None:
     tabWidget = FullWidthTabWidget()
     qtbot.addWidget(tabWidget)
     for title in ("One", "Two", "Three"):
@@ -70,7 +70,7 @@ def testTheOpenTabHighlightFollowsTheTheme(qtbot, observableColorScheme) -> None
     qtbot.waitUntil(lambda: darkTokens.accent in tabWidget.tabBar().styleSheet(), timeout=5000)
 
 
-def testTabPagesTakeTheNewThemeToo(qtbot, observableColorScheme) -> None:
+def testTabPagesTakeTheNewThemeToo(qtbot, observableColorScheme, onScreen) -> None:
     """A styled tab bar stops Qt passing the palette down; the widget must do it."""
     import pytest
     from PySide6.QtWidgets import QApplication, QSpinBox

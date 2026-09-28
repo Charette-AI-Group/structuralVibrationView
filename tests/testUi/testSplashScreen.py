@@ -33,7 +33,7 @@ def testWithoutASplashTheHelpersDoNothing(qapp) -> None:
     splashScreen.finish(None, qapp.activeWindow())
 
 
-def testTheSplashIsTakenDownAsTheWindowAppears(qapp, qtbot) -> None:
+def testTheSplashIsTakenDownAsTheWindowAppears(qapp, qtbot, onScreen) -> None:
     from PySide6.QtWidgets import QWidget
 
     splash = splashScreen.makeSplash()

@@ -11,7 +11,7 @@ from structuralVibrationView.services import themeService
 from structuralVibrationView.ui.mainWindow import MainWindow
 
 
-def testMainWindowOpens(qtbot) -> None:
+def testMainWindowOpens(qtbot, onScreen) -> None:
     mainWindow = MainWindow()
     qtbot.addWidget(mainWindow)
     mainWindow.show()
@@ -22,7 +22,7 @@ def testMainWindowOpens(qtbot) -> None:
     assert mainWindow.statusBar().currentMessage().startswith("Cantilever Beam: Mode 1")
 
 
-def testTheVibrationViewIsTheCentralWidgetAndReportsToTheBar(qtbot) -> None:
+def testTheVibrationViewIsTheCentralWidgetAndReportsToTheBar(qtbot, onScreen) -> None:
     mainWindow = MainWindow()
     qtbot.addWidget(mainWindow)
     mainWindow.show()
@@ -35,7 +35,7 @@ def testTheVibrationViewIsTheCentralWidgetAndReportsToTheBar(qtbot) -> None:
     assert mainWindow.statusBar().currentMessage().startswith("Paused")
 
 
-def testClosingTheWindowStopsTheAnimation(qtbot) -> None:
+def testClosingTheWindowStopsTheAnimation(qtbot, onScreen) -> None:
     mainWindow = MainWindow()
     qtbot.addWidget(mainWindow)
     mainWindow.show()
@@ -209,7 +209,7 @@ def testTheWindowOpensAtTheDefaultSizeOnAFirstRun(qtbot) -> None:
     assert mainWindow.height() == appConfig.defaultWindowHeight
 
 
-def testClosingRemembersPositionAndSizeForTheNextLaunch(qtbot) -> None:
+def testClosingRemembersPositionAndSizeForTheNextLaunch(qtbot, onScreen) -> None:
     first = MainWindow()
     qtbot.addWidget(first)
     first.show()
@@ -227,7 +227,12 @@ def testClosingRemembersPositionAndSizeForTheNextLaunch(qtbot) -> None:
     # The frame, and so pos(), only settles once the window is on screen.
     reopened.show()
     qtbot.waitExposed(reopened)
-    assert reopened.size() == savedSize
+    # Near enough: macOS hands back a window a few pixels shorter than the
+    # one it was given, and what matters is that the saved size came back
+    # rather than the default.
+    assert abs(reopened.width() - savedSize.width()) <= 12
+    assert abs(reopened.height() - savedSize.height()) <= 12
+    assert reopened.width() != appConfig.defaultWindowWidth
     assert reopened.pos() == savedPosition
     reopened.vibrationView.shutdown()
 
