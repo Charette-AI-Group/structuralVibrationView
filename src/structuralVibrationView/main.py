@@ -39,6 +39,15 @@ def setAppIdentity(app: QApplication) -> None:
 
 
 def main() -> int:
+    # A packaged build has no console, so the way to ask it whether it is
+    # intact is to have it write a report: see selftest.py.
+    if "--selftest" in sys.argv:
+        from structuralVibrationView.selftest import runSelfTest
+
+        index = sys.argv.index("--selftest")
+        reportPath = sys.argv[index + 1] if len(sys.argv) > index + 1 else None
+        return runSelfTest(reportPath)
+
     app = QApplication(sys.argv)
     app.setApplicationName(appConfig.appName)
     app.setApplicationVersion(appConfig.appVersion)

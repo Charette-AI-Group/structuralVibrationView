@@ -1,0 +1,242 @@
+# Builds the standalone application and publishes it.
+#
+# Every push runs the tests on both platforms and builds both, downloadable
+# from the run's "Artifacts" section. Pushing a version tag additionally
+# publishes a GitHub Release with them attached, because release assets never
+# expire and workflow artifacts do:
+#
+#     git tag -a v1.0.0 -m "What changed" && git push origin v1.0.0
+#
+# The annotated tag's message becomes the release notes (see the release
+# job). git tag deletes lines starting with "#" by default, so for Markdown
+# headings in the notes, tag from a file with --cleanup=whitespace instead:
+#
+#     git tag -a v1.0.1 --cleanup=whitespace -F notes.md && git push origin v1.0.1
+#
+# What each platform produces, and why they differ:
+#
+#   Windows  a one-folder bundle, wrapped two ways. Inno Setup compiles it
+#            into an installer, and Compress-Archive zips it for anyone who
+#            would rather not run one. A folder is not something you can hand
+#            somebody through a download link.
+#   macOS    an application bundle. .app is already the unit Finder opens and
+#            the Dock shows, so it only needs zipping - with ditto, because
+#            upload-artifact does not preserve the executable bits or the
+#            symlinks inside a bundle, and a zip that loses them is an app
+#            that will not start.
+#
+# This app draws with VTK through OpenGL, which a runner has no graphics card
+# for. Mesa's software renderer is installed on Windows for that reason; the
+# macOS runners answer with their own software OpenGL.
+#
+# The tag has to agree with appConfig.appVersion. That is checked rather than
+# trusted: a release named after a version the application does not report is
+# worse than no release, because the bug report that follows is unanswerable.
+
+name: build
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      # The traffic workflow commits here every Monday. Without this, a row of
+      # visitor counts would cost a full Windows and macOS build.
+      - "traffic/**"
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install Mesa, so VTK has an OpenGL to draw through
+        if: runner.os == 'Windows'
+        run: choco install mesa --no-progress -y
+
+      - name: Install the app and its dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Lint
+        run: python -m ruff check src tests tools
+
+      # Only on a tag, and before anything is built: finding this out after a
+      # build and a drafted release is too late.
+      - name: Check the tag matches the version the app reports
+        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Windows'
+        run: |
+          $reported = python -c "import sys; sys.path.insert(0, 'src'); from structuralVibrationView import appConfig; print(appConfig.appVersion)"
+          $tagged = "${{ github.ref_name }}".TrimStart("v")
+          Write-Output "appConfig.appVersion = $reported"
+          Write-Output "tag                  = $tagged"
+          if ($reported -ne $tagged) {
+            Write-Output "::error::Tag $tagged does not match appConfig.appVersion $reported"
+            exit 1
+          }
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifactName: structuralVibrationViewWindows
+            artifactPath: |
+              dist/structuralVibrationViewSetup-*.exe
+              dist/StructuralVibrationView-*-portable.zip
+          - os: macos-latest
+            artifactName: structuralVibrationViewMacos
+            artifactPath: dist/StructuralVibrationView-*-macos.zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install Mesa, so the built app's self-test can draw
+        if: runner.os == 'Windows'
+        run: choco install mesa --no-progress -y
+
+      - name: Install the app and its build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[build]"
+
+      # Builds the bundle, takes an inventory of what landed in it - VTK
+      # included, since it is loaded by name and its absence is silent - then
+      # runs the built application's own --selftest. A windowed build has no
+      # console to complain through, so asking it is the only proof it starts.
+      - name: Build the standalone application
+        run: python tools/buildExe.py
+
+      - name: Read the version the app reports
+        id: naming
+        shell: bash
+        run: |
+          version=$(python -c "import sys; sys.path.insert(0, 'src'); from structuralVibrationView import appConfig; print(appConfig.appVersion)")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "version=$version"
+
+      # --- Windows: the installer and the portable folder ------------------
+
+      - name: Ensure Inno Setup is available
+        if: runner.os == 'Windows'
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            Write-Output "Inno Setup not on the image; installing it."
+            choco install innosetup --no-progress -y
+          }
+          else { Write-Output "Inno Setup is already here: $iscc" }
+
+      - name: Build the installer
+        if: runner.os == 'Windows'
+        run: python tools/buildInstaller.py
+
+      - name: Zip the portable bundle
+        if: runner.os == 'Windows'
+        run: Compress-Archive -Path dist/StructuralVibrationView/* -DestinationPath "dist/StructuralVibrationView-${{ steps.naming.outputs.version }}-portable.zip"
+
+      # --- macOS: zip the .app with its permissions intact -----------------
+
+      - name: Zip the application bundle
+        if: runner.os == 'macOS'
+        run: ditto -c -k --keepParent "dist/StructuralVibrationView.app" "dist/StructuralVibrationView-${{ steps.naming.outputs.version }}-macos.zip"
+
+      # ---------------------------------------------------------------------
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifactName }}
+          path: ${{ matrix.artifactPath }}
+          if-no-files-found: error
+
+      # Small, and the first thing worth reading when a build starts on the
+      # runner but not on somebody's machine.
+      - name: Upload the self-test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: structuralVibrationViewSelfTest-${{ runner.os }}
+          path: dist/selftest.txt
+          if-no-files-found: warn
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      # Only for the tag's own message, which becomes the release notes.
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download the build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create the release and attach the builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.ref_name }}"
+          files=(
+            artifacts/structuralVibrationViewWindows/*.exe
+            artifacts/structuralVibrationViewWindows/*.zip
+            artifacts/structuralVibrationViewMacos/*.zip
+          )
+
+          # An annotated tag carries what the person cutting the release
+          # actually wrote. --generate-notes lists merged pull requests, and on
+          # a repository that does not use them it produces a release body
+          # holding one link and nothing else.
+          notes=$(git tag -l --format='%(contents:body)' "$tag")
+          if [ -z "$(echo "$notes" | tr -d '[:space:]')" ]; then
+            notes=$(git tag -l --format='%(contents)' "$tag")
+          fi
+
+          if gh release view "$tag" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            gh release upload "$tag" "${files[@]}" --repo "${{ github.repository }}" --clobber
+          elif [ -n "$(echo "$notes" | tr -d '[:space:]')" ]; then
+            gh release create "$tag" "${files[@]}" \
+              --repo "${{ github.repository }}" \
+              --title "Structural Vibration View ${tag#v}" \
+              --notes "$notes"
+          else
+            gh release create "$tag" "${files[@]}" \
+              --repo "${{ github.repository }}" \
+              --title "Structural Vibration View ${tag#v}" \
+              --generate-notes
+          fi

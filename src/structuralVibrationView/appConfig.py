@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 appName = "Structural Vibration View"
@@ -25,9 +26,19 @@ donateTextColour = "#1f1e1b"
 donatePressedColour = "#d9991f"
 
 projectRoot = Path(__file__).resolve().parents[2]
-resourcesDir = Path(__file__).resolve().parent / "resources"
+# A packaged build unpacks beside the executable rather than running from the
+# checkout, so everything bundled hangs off this rather than off the source
+# tree, which is not there any more.
+isFrozen = bool(getattr(sys, "frozen", False))
+bundleRoot = Path(getattr(sys, "_MEIPASS", projectRoot)) if isFrozen else projectRoot
+if isFrozen:
+    resourcesDir = bundleRoot / "structuralVibrationView" / "resources"
+else:
+    resourcesDir = Path(__file__).resolve().parent / "resources"
 # Drawn by tools/makeIcons.py. The app runs without one if it is missing.
 iconFile = resourcesDir / "structuralVibrationView.ico"
+# macOS renders its .icns from this one at build time.
+largeIconFile = resourcesDir / "structuralVibrationView.png"
 # Set this to 1 to start straight into the window, with no splash screen.
 noSplashEnvVar = "STRUCTURAL_VIBRATION_VIEW_NO_SPLASH"
 # Windows groups taskbar buttons by this ID. Without one, a window started by
@@ -36,7 +47,7 @@ appUserModelId = f"{organizationName}.StructuralVibrationView"
 
 # Help > User Manual. The copy in the checkout is what a new app has, and it is
 # enough: the menu item works from the first run rather than being a promise.
-manualPath = projectRoot / "docs" / "manual" / "README.md"
+manualPath = bundleRoot / "docs" / "manual" / "README.md"
 # Publishing is opt-in. Set this once the manual is pushed somewhere that
 # renders markdown - GitHub shows screenshots that a local .md opened in an
 # editor does not - and the published copy becomes the preferred one, with the

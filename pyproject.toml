@@ -16,6 +16,11 @@ dev = [
     "pytest-qt>=4.4,<5",
     "ruff>=0.4,<1",
 ]
+build = [
+    "pyinstaller>=6.10,<7",
+    # PyInstaller renders the macOS .icns from the 1024 px PNG with pillow.
+    "pillow>=10",
+]
 
 [project.scripts]
 structural-vibration-view = "structuralVibrationView.main:main"

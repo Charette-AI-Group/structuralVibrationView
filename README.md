@@ -103,6 +103,67 @@ pytest
 ruff check src tests tools
 ```
 
+## Standalone builds
+
+Users do not need Python.
+[Releases](https://github.com/Charette-AI-Group/structuralVibrationView/releases) carry a Windows
+installer, a Windows portable zip and a macOS app bundle, all built by
+[`.github/workflows/build.yml`](.github/workflows/build.yml) and attached automatically when a
+version tag is pushed.
+
+To build them yourself:
+
+```powershell
+pip install -e ".[build]"
+python tools\buildExe.py
+python tools\buildInstaller.py
+```
+
+| Step | Produces | Notes |
+|------|----------|-------|
+| `tools/buildExe.py` on Windows | `dist\StructuralVibrationView\` | One-folder PyInstaller bundle |
+| `tools/buildExe.py` on macOS | `dist/StructuralVibrationView.app` | Application bundle, from the same spec |
+| `tools\buildInstaller.py` | `dist\structuralVibrationViewSetup-<version>.exe` | Inno Setup 6. Per-user install, no administrator rights. Needs `winget install JRSoftware.InnoSetup`. Windows only |
+
+The Windows build is one folder rather than one file so it starts immediately, and because an
+installer wants a folder anyway.
+
+VTK is the awkward part of packaging this app: its Python modules are loaded by name rather than
+imported in the source, so PyInstaller's analysis cannot see them, and a bundle that dropped them
+builds happily and then shows an empty panel where the structure should be. The spec collects
+them, `tools/buildExe.py` checks the renderer actually shipped, and `--selftest report.txt` asks
+a built copy whether it kept its icons and its manual and can build the real 3D view - which is
+the only way a windowed build can answer, since it has no console. The build script refuses to
+call a bundle shippable until it does.
+
+### A note for macOS users
+
+The app bundle is **not code-signed or notarised**, so Gatekeeper will refuse it on first open
+with a message about an unidentified developer. Right-click the app and choose **Open**, which
+offers a button the plain double-click does not, or clear the quarantine flag:
+
+```bash
+xattr -dr com.apple.quarantine StructuralVibrationView.app
+```
+
+Signing needs a paid Apple Developer account, which this project does not have.
+
+To publish a release, tag a commit whose `appConfig.appVersion` matches. The workflow refuses a
+tag that disagrees, because a release named after a version the app does not report leaves a bug
+report unanswerable.
+
+```powershell
+git tag -a v1.0.0 -m "What changed in this release" ; git push origin v1.0.0
+```
+
+The tag's message becomes the release notes. `git tag` deletes lines starting with `#` by
+default, so if the notes use Markdown headings, write them to a file and tag with
+`--cleanup=whitespace` instead:
+
+```powershell
+git tag -a v1.0.1 --cleanup=whitespace -F notes.md ; git push origin v1.0.1
+```
+
 ## Starting up
 
 Starting takes about 2.0 s, nearly all of it importing PyVista and VTK (1.1 s) and building the
@@ -144,7 +205,10 @@ The vibration feature, by file:
 | `ui/widgets/vibrationControls.py` | The panel: type, tabs, playback |
 | `ui/widgets/structureParametersTab.py` | Mode, dimensions and material |
 | `ui/splashScreen.py` | The startup splash |
+| `selftest.py` | What a built copy reports when asked whether it is intact |
 | `tools/makeIcons.py` | Draw the application icon (not imported by the app) |
+| `tools/buildExe.py` | PyInstaller build, payload inventory, self-test |
+| `tools/buildInstaller.py` | Compile the Windows installer from the bundle |
 | `tools/recordTraffic.py` | Snapshot the GitHub traffic numbers, which GitHub keeps 14 days |
 
 See `AGENTS.md` for architecture and naming conventions (for you and AI agents).
