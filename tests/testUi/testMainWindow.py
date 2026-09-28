@@ -7,7 +7,7 @@ from PySide6.QtGui import QKeySequence
 
 from structuralVibrationView import appConfig
 from structuralVibrationView.models.vibrationModel import StructureKind
-from structuralVibrationView.services import themeService
+from structuralVibrationView.services import themeService, windowGeometryService
 from structuralVibrationView.ui.mainWindow import MainWindow
 
 
@@ -210,30 +210,34 @@ def testTheWindowOpensAtTheDefaultSizeOnAFirstRun(qtbot) -> None:
 
 
 def testClosingRemembersPositionAndSizeForTheNextLaunch(qtbot, onScreen) -> None:
+    """Where the geometry goes, and that the next window is built from it.
+
+    Asserted through the saved value rather than through pixels: what the app
+    controls is what it writes and what it restores from. Where a window
+    manager then puts the window is its own business, and macOS in particular
+    trims the height and moves the window up to clear its menu bar.
+    """
     first = MainWindow()
     qtbot.addWidget(first)
     first.show()
     first.setGeometry(140, 160, 900, 650)
     qtbot.waitUntil(lambda: first.width() == 900)
-    # What it actually ended up as, which is the thing that has to come back.
-    # A window manager is free to trim a size it cannot honour, and macOS
-    # takes a few pixels for its menu bar.
-    savedPosition, savedSize = first.pos(), first.size()
+    closedGeometry = first.saveGeometry()
+    closedSize = first.size()
 
     first.close()
 
+    assert windowGeometryService.loadGeometry() == closedGeometry
+
     reopened = MainWindow()
     qtbot.addWidget(reopened)
-    # The frame, and so pos(), only settles once the window is on screen.
     reopened.show()
     qtbot.waitExposed(reopened)
-    # Near enough: macOS hands back a window a few pixels shorter than the
-    # one it was given, and what matters is that the saved size came back
-    # rather than the default.
-    assert abs(reopened.width() - savedSize.width()) <= 12
-    assert abs(reopened.height() - savedSize.height()) <= 12
+
+    # Near enough: the size came back rather than the default one.
+    assert abs(reopened.width() - closedSize.width()) <= 12
+    assert abs(reopened.height() - closedSize.height()) <= 12
     assert reopened.width() != appConfig.defaultWindowWidth
-    assert reopened.pos() == savedPosition
     reopened.vibrationView.shutdown()
 
 
