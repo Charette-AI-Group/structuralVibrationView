@@ -2,7 +2,7 @@ r"""Tests for splitting a failure between the status bar and a dialog."""
 
 from __future__ import annotations
 
-from transverseVibrationView.ui.dialogs.errorDialog import (
+from structuralVibrationView.ui.dialogs.errorDialog import (
     detailOf,
     headlineOf,
     statusHeadlineLimit,

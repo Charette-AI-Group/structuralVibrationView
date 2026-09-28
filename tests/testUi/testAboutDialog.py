@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QDialog
 
-from transverseVibrationView import appConfig
-from transverseVibrationView.ui.dialogs.aboutDialog import AboutDialog, aboutHtml, showAbout
+from structuralVibrationView import appConfig
+from structuralVibrationView.ui.dialogs.aboutDialog import AboutDialog, aboutHtml, showAbout
 
 
 def testAboutTextCarriesTheCredits() -> None:
@@ -59,7 +59,7 @@ def testEnterCannotOpenThePaymentPage(qtbot) -> None:
 def testShowAboutReportsWhetherItOpenedTheDonationPage(qtbot, monkeypatch) -> None:
     opened: list[str] = []
     monkeypatch.setattr(
-        "transverseVibrationView.ui.dialogs.aboutDialog.QDesktopServices.openUrl",
+        "structuralVibrationView.ui.dialogs.aboutDialog.QDesktopServices.openUrl",
         lambda url: opened.append(url.toString()) or True,
     )
 

@@ -6,8 +6,8 @@ import urllib.error
 
 import pytest
 
-from transverseVibrationView import appConfig
-from transverseVibrationView.services.manualService import ManualService
+from structuralVibrationView import appConfig
+from structuralVibrationView.services.manualService import ManualService
 
 publishedUrl = "https://example.invalid/manual"
 

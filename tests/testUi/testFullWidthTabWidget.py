@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QWidget
 
-from transverseVibrationView.ui.widgets.fullWidthTabWidget import FullWidthTabWidget
+from structuralVibrationView.ui.widgets.fullWidthTabWidget import FullWidthTabWidget
 
 
 def tabsFillHalves(tabWidget: FullWidthTabWidget) -> bool:
@@ -55,8 +55,8 @@ def testTheOpenTabHighlightFollowsTheTheme(qtbot, observableColorScheme) -> None
     """Built in light, switched to dark: the accent must switch with it."""
     import pytest
 
-    from transverseVibrationView.services import themeService
-    from transverseVibrationView.ui.theme import darkTokens, lightTokens
+    from structuralVibrationView.services import themeService
+    from structuralVibrationView.ui.theme import darkTokens, lightTokens
 
     if not observableColorScheme:
         pytest.skip("this platform does not report a forced colour scheme")
@@ -75,7 +75,7 @@ def testTabPagesTakeTheNewThemeToo(qtbot, observableColorScheme) -> None:
     import pytest
     from PySide6.QtWidgets import QApplication, QSpinBox
 
-    from transverseVibrationView.services import themeService
+    from structuralVibrationView.services import themeService
 
     if not observableColorScheme:
         pytest.skip("this platform does not report a forced colour scheme")
@@ -98,7 +98,7 @@ def testADeletedTabWidgetIgnoresLaterThemeChanges(qtbot) -> None:
     """The colour-scheme signal outlives the widget; it must not reach a dead one."""
     from PySide6.QtWidgets import QApplication
 
-    from transverseVibrationView.services import themeService
+    from structuralVibrationView.services import themeService
 
     tabWidget = FullWidthTabWidget()
     tabWidget.deleteLater()

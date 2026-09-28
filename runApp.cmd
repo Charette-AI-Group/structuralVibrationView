@@ -16,4 +16,4 @@ if not exist "%VENV_PYW%" (
     exit /b 1
 )
 
-start "" "%VENV_PYW%" -m transverseVibrationView.main
+start "" "%VENV_PYW%" -m structuralVibrationView.main

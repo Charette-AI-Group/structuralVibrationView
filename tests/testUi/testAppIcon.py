@@ -7,8 +7,8 @@ import struct
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon
 
-from transverseVibrationView import appConfig
-from transverseVibrationView.main import setAppIdentity
+from structuralVibrationView import appConfig
+from structuralVibrationView.main import setAppIdentity
 
 pngSignature = b"\x89PNG\r\n\x1a\n"
 

@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
-from transverseVibrationView.models.vibrationModel import StructureKind
-from transverseVibrationView.ui.theme import currentTokens
-from transverseVibrationView.ui.widgets.vibrationControls import pauseLabel, playLabel
-from transverseVibrationView.ui.widgets.vibrationView import (
+from structuralVibrationView.models.vibrationModel import StructureKind
+from structuralVibrationView.services import vibrationService
+from structuralVibrationView.ui.theme import currentTokens
+from structuralVibrationView.ui.widgets.vibrationControls import pauseLabel, playLabel
+from structuralVibrationView.ui.widgets.vibrationView import (
     VibrationView,
-    deformedMeshName,
+    deformedName,
     displacementArrayName,
-    referenceMeshName,
+    referenceName,
 )
 
 
@@ -29,10 +31,10 @@ def testTheViewOpensWithABeamOnScreen(qtbot) -> None:
 
     assert view.model is not None
     assert view.model.geometry.kind is StructureKind.cantileverBeam
-    assert view.mesh is not None
-    assert view.mesh.n_points == view.model.geometry.pointCount
-    assert deformedMeshName in view.interactor.actors
-    assert referenceMeshName in view.interactor.actors
+    assert view.meshes
+    assert view.meshes[0].n_points == view.model.geometry.pointCount
+    assert deformedName(0) in view.interactor.actors
+    assert referenceName(0) in view.interactor.actors
     view.shutdown()
 
 
@@ -51,14 +53,14 @@ def testTheClockRunsByDefaultAndPauseStopsIt(qtbot) -> None:
 
 def testATickMovesTheMesh(qtbot) -> None:
     view = makeView(qtbot)
-    before = np.array(view.mesh.points)
+    before = np.array(view.meshes[0].points)
     frames = view.frameCount
 
     view.onTick()
 
     assert view.timeSeconds > 0.0
     assert view.frameCount == frames + 1
-    assert not np.array_equal(np.array(view.mesh.points), before)
+    assert not np.array_equal(np.array(view.meshes[0].points), before)
     assert view.controls.timeLabel.text().endswith(" ms")
     view.shutdown()
 
@@ -93,30 +95,29 @@ def testChangingTheStructureRebuildsTheMesh(qtbot) -> None:
     view = makeView(qtbot)
     statuses: list[str] = []
     view.statusMessage.connect(statuses.append)
-    beamMesh = view.mesh
+    beamMesh = view.meshes[0]
 
-    plateIndex = list(StructureKind).index(StructureKind.simplySupportedPlate)
-    view.controls.kindCombo.setCurrentIndex(plateIndex)
+    view.controls.showKind(StructureKind.simplySupportedPlate)
 
     assert view.model.geometry.kind is StructureKind.simplySupportedPlate
-    assert view.mesh is not beamMesh
-    assert view.mesh.n_points == view.model.geometry.pointCount
+    assert view.meshes[0] is not beamMesh
+    assert view.meshes[0].n_points == view.model.geometry.pointCount
     assert statuses and statuses[-1].startswith("Simply Supported Plate: Mode 1")
     view.shutdown()
 
 
 def testChangingAnAmplitudeKeepsTheMeshAndRescalesColours(qtbot) -> None:
     view = makeView(qtbot)
-    mesh = view.mesh
+    mesh = view.meshes[0]
 
     view.controls.modeRows[1].amplitudeSpin.setValue(0.05)
 
-    assert view.mesh is mesh
+    assert view.meshes[0] is mesh
     assert [term.modeNumber for term in view.model.terms] == [1, 2]
     limit = view.model.maxDisplacement
-    mapper = view.interactor.actors[deformedMeshName].mapper
+    mapper = view.interactor.actors[deformedName(0)].mapper
     assert np.allclose(mapper.scalar_range, (-limit, limit))
-    assert displacementArrayName in view.mesh.point_data
+    assert displacementArrayName in view.meshes[0].point_data
     view.shutdown()
 
 
@@ -260,26 +261,27 @@ def testChangingTheLengthRebuildsTheStructureAtThatLength(qtbot) -> None:
     view.controls.structureTab.lengthSpin.setValue(2.0)
 
     assert view.model.geometry.length == 2.0
-    assert np.isclose(np.array(view.mesh.points)[:, 0].max(), 2.0)
+    assert np.isclose(np.array(view.meshes[0].points)[:, 0].max(), 2.0)
     # A size change keeps the camera where the user left it.
     assert view.interactor.camera_position == cameraBefore
     view.shutdown()
 
 
-def testChangingTheTypeKeepsTheUsersDimensionsAndMaterial(qtbot) -> None:
+def testChangingTheTypeKeepsTheMaterialAndTheOtherDimensions(qtbot) -> None:
     view = makeView(qtbot)
     controls = view.controls
-    controls.structureTab.widthSpin.setValue(0.3)
+    controls.structureTab.lengthSpin.setValue(0.4)
+    controls.structureTab.thicknessSpin.setValue(0.005)
     controls.structureTab.densitySpin.setValue(7850.0)
     setups = []
     controls.setupChanged.connect(setups.append)
 
-    controls.kindCombo.setCurrentIndex(list(StructureKind).index(StructureKind.simplySupportedPlate))
+    chooseKind(controls, StructureKind.simplySupportedPlate)
 
     assert len(setups) == 1
-    assert setups[0].size.width == 0.3
+    assert setups[0].size.length == 0.4
+    assert setups[0].size.thickness == 0.005
     assert setups[0].material.density == 7850.0
-    assert view.model.geometry.width == 0.3
     view.shutdown()
 
 
@@ -311,7 +313,7 @@ def testTheFundamentalIsComputedAndShown(qtbot) -> None:
 
 def testAtSpeedOneMode1TakesTwoScreenSecondsPerCycle(qtbot) -> None:
     """Slow motion is set by the physics, so a stiff structure is not a blur."""
-    from transverseVibrationView import appConfig
+    from structuralVibrationView import appConfig
 
     view = makeView(qtbot)
     ticksPerScreenSecond = 1000.0 / appConfig.animationIntervalMs
@@ -347,7 +349,7 @@ def testPoissonsRatioChangesTheFundamentalOfThePlateOnly(qtbot) -> None:
     assert view.model.setup.material.poissonRatio == 0.45
     assert view.model.fundamentalFrequencyHz == beamHz
 
-    controls.kindCombo.setCurrentIndex(list(StructureKind).index(StructureKind.simplySupportedPlate))
+    controls.showKind(StructureKind.simplySupportedPlate)
     plateHz = view.model.fundamentalFrequencyHz
     controls.structureTab.poissonRatioSpin.setValue(0.0)
 
@@ -490,7 +492,7 @@ def testTheSuperpositionTabCannotChangeTheSingleModeAnimation(qtbot) -> None:
 
 
 def testChoosingAModeAnimatesItAndPacesTheClockByIt(qtbot) -> None:
-    from transverseVibrationView import appConfig
+    from structuralVibrationView import appConfig
 
     view = makeView(qtbot)
     openStructureTab(view)
@@ -530,8 +532,280 @@ def testModeFrequenciesFollowTheStructure(qtbot) -> None:
     tab.thicknessSpin.setValue(0.006)
     assert tab.modeCombo.itemText(0) == "Mode 1 (54.8 Hz)"
 
-    view.controls.kindCombo.setCurrentIndex(
-        list(StructureKind).index(StructureKind.simplySupportedBeam)
-    )
+    view.controls.showKind(StructureKind.simplySupportedBeam)
     assert tab.modeCombo.itemText(0) == "Mode 1 (154 Hz)"
+    view.shutdown()
+
+
+def testTheTypeListSeparatesTheFamilies(qtbot) -> None:
+    view = makeView(qtbot)
+    combo = view.controls.kindCombo
+
+    rows = [
+        "---" if combo.itemData(i) is None else combo.itemText(i)
+        for i in range(combo.count())
+    ]
+    assert rows == [
+        "Cantilever Beam",
+        "Simply Supported Beam",
+        "Clamped-Clamped Beam",
+        "---",
+        "Simply Supported Plate",
+        "Clamped Plate",
+        "---",
+        "Spring-Mass (SDOF)",
+    ]
+    view.shutdown()
+
+
+def testEveryTypeIsStillSelectableWithTheSeparatorThere(qtbot) -> None:
+    view = makeView(qtbot)
+
+    for kind in StructureKind:
+        view.controls.showKind(kind)
+        assert view.controls.currentKind() is kind
+        assert view.model.geometry.kind is kind
+    view.shutdown()
+
+
+def testTheTypeSeparatorIsDrawnInAGreyThatCanBeSeen(qtbot) -> None:
+    """The platform's own line is nearly black on a dark popup."""
+    from PySide6.QtCore import QRect
+    from PySide6.QtGui import QColor, QPainter, QPixmap
+    from PySide6.QtWidgets import QStyleOptionViewItem
+
+    from structuralVibrationView.ui.theme import currentTokens
+    from structuralVibrationView.ui.widgets.separatorItemDelegate import (
+        SeparatorItemDelegate,
+        isSeparator,
+    )
+
+    view = makeView(qtbot)
+    combo = view.controls.kindCombo
+    delegate = combo.itemDelegate()
+    assert isinstance(delegate, SeparatorItemDelegate)
+    row = next(i for i in range(combo.count()) if combo.itemData(i) is None)
+    index = combo.model().index(row, 0)
+    assert isSeparator(index)
+
+    option = QStyleOptionViewItem()
+    option.rect = QRect(0, 0, 200, delegate.sizeHint(option, index).height())
+    canvas = QPixmap(option.rect.size())
+    canvas.fill(QColor("#000000"))
+    painter = QPainter(canvas)
+    delegate.paint(painter, option, index)
+    painter.end()
+
+    middle = canvas.toImage().pixelColor(100, option.rect.height() // 2)
+    assert middle == QColor(currentTokens().divider)
+    view.shutdown()
+
+
+# ----- the width that comes with a change of type -----------------------------
+
+
+def chooseKind(controls, kind) -> None:
+    """Pick a type the way a user does, through the dropdown's own signal."""
+    combo = controls.kindCombo
+    combo.setCurrentIndex(combo.findData(kind.value))
+
+
+def testChoosingThePlateMakesItTwiceAsLongAsItIsWide(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+    controls.structureTab.lengthSpin.setValue(0.4)
+    setups = []
+    controls.setupChanged.connect(setups.append)
+
+    chooseKind(controls, StructureKind.simplySupportedPlate)
+
+    assert controls.structureTab.widthSpin.value() == 0.2
+    assert view.model.geometry.width == 0.2
+    assert len(setups) == 1  # the new width and type arrive together
+    view.shutdown()
+
+
+def testGoingBackToABeamMakesItSlenderAgain(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+    chooseKind(controls, StructureKind.simplySupportedPlate)
+
+    chooseKind(controls, StructureKind.cantileverBeam)
+
+    ratio = vibrationService.lengthToWidthFor(StructureKind.cantileverBeam)
+    assert controls.structureTab.widthSpin.value() == pytest.approx(0.3 / ratio)
+    assert ratio == 30.0  # 0.3 m by 0.01 m, the app's default beam
+    view.shutdown()
+
+
+def testOneBeamToAnotherLeavesTheWidthAlone(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+    controls.structureTab.widthSpin.setValue(0.05)
+
+    chooseKind(controls, StructureKind.clampedBeam)
+
+    assert controls.structureTab.widthSpin.value() == 0.05
+    view.shutdown()
+
+
+def testAWidthSetAfterTheTypeChangeIsKept(qtbot) -> None:
+    """The proportions are an offer, not a rule."""
+    view = makeView(qtbot)
+    controls = view.controls
+    chooseKind(controls, StructureKind.simplySupportedPlate)
+
+    controls.structureTab.widthSpin.setValue(0.25)
+
+    assert view.model.geometry.width == 0.25
+    assert controls.currentKind() is StructureKind.simplySupportedPlate
+    view.shutdown()
+
+
+def testOpeningASessionKeepsTheWidthItWasSavedWith(qtbot, tmp_path) -> None:
+    """A saved plate may be any shape; opening it must not reshape it."""
+    from structuralVibrationView.services import sessionFileService
+
+    view = makeView(qtbot)
+    controls = view.controls
+    chooseKind(controls, StructureKind.simplySupportedPlate)
+    controls.structureTab.widthSpin.setValue(0.05)
+    path = tmp_path / "narrow.tvv"
+    sessionFileService.saveSession(path, view.captureSession())
+    view.shutdown()
+
+    reopened = makeView(qtbot)
+    reopened.restoreSession(sessionFileService.loadSession(path))
+
+    assert reopened.controls.structureTab.widthSpin.value() == 0.05
+    assert reopened.model.geometry.width == 0.05
+    reopened.shutdown()
+
+
+def testTheClampedPlateAnimatesAsTheLastPlate(qtbot) -> None:
+    view = makeView(qtbot)
+    combo = view.controls.kindCombo
+    statuses: list[str] = []
+    view.statusMessage.connect(statuses.append)
+
+    plates = [combo.itemData(i) for i in range(combo.count()) if combo.itemData(i)]
+    assert plates[-2] == StructureKind.clampedPlate.value
+
+    chooseKind(view.controls, StructureKind.clampedPlate)
+
+    assert view.model.geometry.kind is StructureKind.clampedPlate
+    assert view.meshes[0].n_points == view.model.geometry.pointCount
+    assert statuses[-1].startswith("Clamped Plate: Mode 1 (1,1)")
+    # Clamped edges are stiffer, so it sits well above the supported plate.
+    view.shutdown()
+
+
+def testBothPlatesGetThePlateProportions(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+    controls.structureTab.lengthSpin.setValue(0.4)
+
+    chooseKind(controls, StructureKind.clampedPlate)
+
+    assert controls.structureTab.widthSpin.value() == 0.2
+    view.shutdown()
+
+
+# ----- the spring-mass system on screen ---------------------------------------
+
+
+def testTheOscillatorIsDrawnAsTwoMeshes(qtbot) -> None:
+    view = makeView(qtbot)
+    statuses: list[str] = []
+    view.statusMessage.connect(statuses.append)
+
+    chooseKind(view.controls, StructureKind.springMass)
+
+    assert len(view.meshes) == 2
+    assert [part.name for part in view.model.geometry.parts] == ["spring", "mass"]
+    for index in range(2):
+        assert deformedName(index) in view.interactor.actors
+        assert referenceName(index) in view.interactor.actors
+    assert statuses[-1].startswith("Spring-Mass (SDOF): Mode 1 at")
+    view.shutdown()
+
+
+def testBothOfItsMeshesMoveOnATick(qtbot) -> None:
+    view = makeView(qtbot)
+    chooseKind(view.controls, StructureKind.springMass)
+    before = [np.array(mesh.points) for mesh in view.meshes]
+
+    view.onTick()
+
+    for mesh, was in zip(view.meshes, before, strict=True):
+        assert not np.array_equal(np.array(mesh.points), was)
+    view.shutdown()
+
+
+def testGoingBackToABeamLeavesNoOscillatorBehind(qtbot) -> None:
+    view = makeView(qtbot)
+    chooseKind(view.controls, StructureKind.springMass)
+
+    chooseKind(view.controls, StructureKind.cantileverBeam)
+
+    assert len(view.meshes) == 1
+    assert deformedName(1) not in view.interactor.actors
+    assert referenceName(1) not in view.interactor.actors
+    view.shutdown()
+
+
+def testItOffersOneModeAndTheBeamsSix(qtbot) -> None:
+    view = makeView(qtbot)
+    controls = view.controls
+    assert controls.structureTab.modeCombo.count() == 5  # the app offers five
+    assert controls.modeRows[0].numberSpin.maximum() == 6
+
+    chooseKind(controls, StructureKind.springMass)
+
+    assert controls.structureTab.modeCombo.count() == 1
+    assert not controls.structureTab.modeCombo.isEnabled()
+    assert controls.modeRows[0].numberSpin.maximum() == 1
+    view.shutdown()
+
+
+def testTheStiffnessRowAppearsOnlyForTheOscillator(qtbot) -> None:
+    view = makeView(qtbot)
+    view.show()
+    qtbot.waitExposed(view)
+    tab = view.controls.structureTab
+    view.controls.tabs.setCurrentIndex(1)
+
+    assert not tab.springStiffnessSpin.isVisible()
+    assert tab.youngsModulusSpin.isVisible()
+
+    chooseKind(view.controls, StructureKind.springMass)
+
+    assert tab.springStiffnessSpin.isVisible()
+    # Young's modulus says nothing about a given spring rate, so it goes.
+    assert not tab.youngsModulusSpin.isVisible()
+    assert not tab.poissonRatioSpin.isVisible()
+    view.shutdown()
+
+
+def testChangingTheStiffnessRetunesIt(qtbot) -> None:
+    view = makeView(qtbot)
+    chooseKind(view.controls, StructureKind.springMass)
+    before = view.model.fundamentalFrequencyHz
+
+    view.controls.structureTab.springStiffnessSpin.setValue(
+        4 * view.controls.structureTab.springStiffnessSpin.value()
+    )
+
+    assert view.model.fundamentalFrequencyHz == pytest.approx(2 * before)
+    view.shutdown()
+
+
+def testTheOscillatorGetsABlockYouCanSee(qtbot) -> None:
+    """Its proportions on switching: a block a third of the spring's height."""
+    view = makeView(qtbot)
+    view.controls.structureTab.lengthSpin.setValue(0.3)
+
+    chooseKind(view.controls, StructureKind.springMass)
+
+    assert view.controls.structureTab.widthSpin.value() == pytest.approx(0.1)
     view.shutdown()

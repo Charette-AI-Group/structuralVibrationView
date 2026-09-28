@@ -1,4 +1,4 @@
-"""Draw Transverse Structural Vibration View's application icon.
+"""Draw Structural Vibration View's application icon.
 
 The same method as 26theOneAssets and 26pySPWB: the icon is drawn with
 QPainter *at each size* rather than scaled down from one large rendering,
@@ -15,7 +15,7 @@ app's own vibration service.
 
     python tools/makeIcons.py
 
-Writes ``src/transverseVibrationView/resources/transverseVibrationView.ico``
+Writes ``src/structuralVibrationView/resources/structuralVibrationView.ico``
 (16 to 256 px) and a 1024 px PNG of the same drawing, for a macOS .icns.
 The app finds them through ``appConfig``, never by path.
 """
@@ -32,8 +32,8 @@ os.environ.pop("QT_QPA_PLATFORM", None)
 
 repo = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(repo / "src"))
-outputDir = repo / "src" / "transverseVibrationView" / "resources"
-stem = "transverseVibrationView"
+outputDir = repo / "src" / "structuralVibrationView" / "resources"
+stem = "structuralVibrationView"
 
 import numpy as np  # noqa: E402
 from PySide6.QtCore import QBuffer, QPointF, QRectF, Qt  # noqa: E402
@@ -48,8 +48,8 @@ from PySide6.QtGui import (  # noqa: E402
 )
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
-from transverseVibrationView.models.vibrationModel import StructureKind  # noqa: E402
-from transverseVibrationView.services import vibrationService  # noqa: E402
+from structuralVibrationView.models.vibrationModel import StructureKind  # noqa: E402
+from structuralVibrationView.services.systems import beamSystem  # noqa: E402
 
 # What a .ico carries: 16 is the title bar and taskbar, 256 the extra-large
 # view in Explorer; the sizes between are what Windows picks at other DPIs.
@@ -98,7 +98,7 @@ def deflection(size: int) -> float:
 def beamPath(size: int, sign: float) -> QPainterPath:
     """The cantilever's first mode shape, bent up (sign 1) or down (sign -1)."""
     xi = np.linspace(0.0, 1.0, 41)
-    shape = vibrationService.beamModeShape(StructureKind.cantileverBeam, 1, xi, 1.0)
+    shape = beamSystem.beamModeShape(StructureKind.cantileverBeam, 1, xi, 1.0)
     shape = shape / shape[-1]  # the tip is +1, whichever way the formula leans
     path = QPainterPath()
     for index, (x, w) in enumerate(zip(xi, shape, strict=True)):

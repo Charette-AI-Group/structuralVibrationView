@@ -7,17 +7,37 @@ import math
 import numpy as np
 import pytest
 
-from transverseVibrationView.models.vibrationModel import (
+from structuralVibrationView.models.vibrationModel import (
     MaterialProperties,
     ModeSetting,
     StructureKind,
+    StructureParameters,
     StructureSize,
     VibrationSetup,
 )
-from transverseVibrationView.services import vibrationService
+from structuralVibrationView.services import vibrationService
+from structuralVibrationView.services.systems import beamSystem, plateSystem
 
 
-@pytest.mark.parametrize("kind", list(StructureKind))
+def parametersOf(
+    size: StructureSize | None = None, material: MaterialProperties | None = None
+) -> StructureParameters:
+    """The whole parameter set a system is asked about, with defaults filled in."""
+    return StructureParameters(
+        size=size or vibrationService.defaultSize,
+        material=material or vibrationService.defaultMaterial,
+    )
+
+
+def displacementOf(model, timeSeconds: float):
+    """Every part's displacement in one array, for a structure drawn as several."""
+    return np.concatenate(vibrationService.displacementAt(model, timeSeconds))
+
+
+
+@pytest.mark.parametrize(
+    "kind", [k for k in StructureKind if k.isBeam or k.isPlate]
+)
 def testGeometryIsAGridWithXVaryingFastest(kind) -> None:
     """VTK reads a structured grid in that order; get it wrong and the mesh is spaghetti."""
     geometry = vibrationService.buildGeometry(kind)
@@ -34,7 +54,7 @@ def testGeometryIsAGridWithXVaryingFastest(kind) -> None:
 
 def testCantileverModeIsFixedAtTheRootAndFreeAtTheTip() -> None:
     x = np.linspace(0.0, 1.0, 201)
-    shape = vibrationService.beamModeShape(StructureKind.cantileverBeam, 1, x, 1.0)
+    shape = beamSystem.beamModeShape(StructureKind.cantileverBeam, 1, x, 1.0)
 
     assert math.isclose(shape[0], 0.0, abs_tol=1e-9)
     assert math.isclose(abs(shape[-1]), 1.0, abs_tol=1e-6)
@@ -45,7 +65,7 @@ def testCantileverModeIsFixedAtTheRootAndFreeAtTheTip() -> None:
 def testClampedBeamIsFixedAtBothEnds() -> None:
     x = np.linspace(0.0, 1.0, 201)
     for mode in (1, 2, 3):
-        shape = vibrationService.beamModeShape(StructureKind.clampedBeam, mode, x, 1.0)
+        shape = beamSystem.beamModeShape(StructureKind.clampedBeam, mode, x, 1.0)
         assert math.isclose(shape[0], 0.0, abs_tol=1e-6)
         assert math.isclose(shape[-1], 0.0, abs_tol=1e-3)
         assert math.isclose(float(np.max(np.abs(shape))), 1.0)
@@ -54,34 +74,40 @@ def testClampedBeamIsFixedAtBothEnds() -> None:
 def testSimplySupportedModeNHasNMinusOneInteriorNodes() -> None:
     x = np.linspace(0.0, 1.0, 1001)
     for mode in (1, 2, 3, 4):
-        shape = vibrationService.beamModeShape(StructureKind.simplySupportedBeam, mode, x, 1.0)
+        shape = beamSystem.beamModeShape(StructureKind.simplySupportedBeam, mode, x, 1.0)
         signChanges = int(np.sum(np.diff(np.sign(shape[1:-1])) != 0))
         assert signChanges == mode - 1
 
 
 def testFrequencyRatiosFollowTheory() -> None:
-    assert vibrationService.beamFrequencyRatio(StructureKind.simplySupportedBeam, 3) == 9.0
-    cantilever2 = vibrationService.beamFrequencyRatio(StructureKind.cantileverBeam, 2)
+    assert beamSystem.beamFrequencyRatio(StructureKind.simplySupportedBeam, 3) == 9.0
+    cantilever2 = beamSystem.beamFrequencyRatio(StructureKind.cantileverBeam, 2)
     assert math.isclose(cantilever2, 6.267, rel_tol=1e-3)
-    clamped2 = vibrationService.beamFrequencyRatio(StructureKind.clampedBeam, 2)
+    clamped2 = beamSystem.beamFrequencyRatio(StructureKind.clampedBeam, 2)
     assert math.isclose(clamped2, 2.757, rel_tol=1e-3)
 
 
-def testPlateModesAreOrderedByFrequency() -> None:
-    order = vibrationService.plateModeOrder(1.0, 0.6)
+@pytest.mark.parametrize(
+    "kind", [StructureKind.simplySupportedPlate, StructureKind.clampedPlate]
+)
+def testPlateModesAreOrderedByFrequency(kind) -> None:
+    order = plateSystem.plateModeOrder(kind, 1.0, 0.6)
 
     assert order[0] == (1, 1)
-    assert len(order) == vibrationService.maxModeNumber
-    parameters = [vibrationService.plateFrequencyParameter(mn, 1.0, 0.6) for mn in order]
+    assert len(order) == plateSystem.plateModeCount
+    parameters = [plateSystem.plateFrequencyParameter(kind, mn, 1.0, 0.6) for mn in order]
     assert parameters == sorted(parameters)
     # A long plate bends along its length before across its width.
     assert order.index((2, 1)) < order.index((1, 2))
 
 
-def testPlateModeIsZeroOnEveryEdge() -> None:
-    geometry = vibrationService.buildGeometry(StructureKind.simplySupportedPlate)
-    shape = vibrationService.plateModeShape(
-        (2, 1), geometry.x, geometry.y, geometry.length, geometry.width
+@pytest.mark.parametrize(
+    "kind", [StructureKind.simplySupportedPlate, StructureKind.clampedPlate]
+)
+def testPlateModeIsZeroOnEveryEdge(kind) -> None:
+    geometry = vibrationService.buildGeometry(kind)
+    shape = plateSystem.plateModeShape(
+        kind, (2, 1), geometry.x, geometry.y, geometry.length, geometry.width
     )
     onEdge = (
         np.isclose(geometry.x, 0.0)
@@ -106,7 +132,7 @@ def testDisplacementStartsAtFullAmplitudeAndOnlyMovesAlongZ() -> None:
     setup = VibrationSetup(kind=StructureKind.cantileverBeam, modes=(ModeSetting(1, 0.1),))
     model = vibrationService.buildModel(setup)
 
-    points, w = vibrationService.deformedPoints(model, 0.0)
+    (points, w), = vibrationService.deformedPoints(model, 0.0)
 
     assert math.isclose(float(np.max(np.abs(w))), 0.1 * model.geometry.length)
     assert np.array_equal(points[:, :2], model.geometry.points[:, :2])
@@ -117,7 +143,7 @@ def testAQuarterPeriodLaterTheFirstModeIsFlat() -> None:
     setup = VibrationSetup(modes=(ModeSetting(1, 0.1),))
     model = vibrationService.buildModel(setup)
 
-    w = vibrationService.displacementAt(model, 0.25 / model.fundamentalFrequencyHz)
+    w = displacementOf(model, 0.25 / model.fundamentalFrequencyHz)
 
     assert np.allclose(w, 0.0, atol=1e-9)
 
@@ -128,8 +154,8 @@ def testDampingDecaysTheMotion() -> None:
     # Three whole cycles in, where the undamped beam is back at its peak.
     later = 3.0 / undamped.fundamentalFrequencyHz
 
-    peakUndamped = float(np.max(np.abs(vibrationService.displacementAt(undamped, later))))
-    peakDamped = float(np.max(np.abs(vibrationService.displacementAt(damped, later))))
+    peakUndamped = float(np.max(np.abs(displacementOf(undamped, later))))
+    peakDamped = float(np.max(np.abs(displacementOf(damped, later))))
 
     assert peakDamped < peakUndamped
     assert peakDamped > 0.0
@@ -147,14 +173,14 @@ def testDescriptionNamesTheModesAndTheirFrequencies() -> None:
 def testTheGeometryTakesTheSizeItIsGiven() -> None:
     size = StructureSize(length=2.5, width=0.2, thickness=0.05)
 
-    geometry = vibrationService.buildGeometry(StructureKind.cantileverBeam, size)
+    geometry = vibrationService.buildGeometry(StructureKind.cantileverBeam, parametersOf(size))
 
     assert (geometry.length, geometry.width, geometry.thickness) == (2.5, 0.2, 0.05)
     assert math.isclose(float(geometry.x.max()), 2.5)
     assert math.isclose(float(np.ptp(geometry.y)), 0.2)
     assert math.isclose(float(np.ptp(geometry.points[:, 2])), 0.05)
     # Same grid as the default size, so the view can keep its mesh.
-    assert geometry.dimensions == vibrationService.beamDimensions
+    assert geometry.dimensions == beamSystem.beamDimensions
 
 
 def testWithoutASizeEveryKindUsesTheDefaultSize() -> None:
@@ -195,8 +221,8 @@ def testAmplitudesScaleWithTheLength() -> None:
         VibrationSetup(modes=modes, size=StructureSize(3.0, 0.08, 0.03))
     )
 
-    peakShort = float(np.max(np.abs(vibrationService.displacementAt(short, 0.0))))
-    peakLong = float(np.max(np.abs(vibrationService.displacementAt(long, 0.0))))
+    peakShort = float(np.max(np.abs(displacementOf(short, 0.0))))
+    peakLong = float(np.max(np.abs(displacementOf(long, 0.0))))
 
     assert math.isclose(peakLong, 3 * peakShort)
 
@@ -226,7 +252,7 @@ def testASquarePlateHasItsTwoSecondModesAtTheSameFrequency() -> None:
 )
 def testASizeOutsideItsRangeIsRefusedByName(size, name) -> None:
     with pytest.raises(ValueError, match=name):
-        vibrationService.buildGeometry(StructureKind.cantileverBeam, size)
+        vibrationService.buildGeometry(StructureKind.cantileverBeam, parametersOf(size))
 
 
 # ----- natural frequencies from material and dimensions -------------------
@@ -256,7 +282,7 @@ def textbookBeamHz(coefficient: float, size: StructureSize, material: MaterialPr
 def testBeamFundamentalsMatchTheHandbook(kind, coefficient) -> None:
     size = StructureSize(length=0.5, width=0.04, thickness=0.006)
 
-    computed = vibrationService.naturalFrequencyHz(kind, 1, size, steel)
+    computed = vibrationService.naturalFrequencyHz(kind, 1, parametersOf(size, steel))
 
     assert math.isclose(computed, textbookBeamHz(coefficient, size, steel), rel_tol=1e-3)
 
@@ -275,7 +301,7 @@ def testASquarePlateFundamentalMatchesTheClosedForm() -> None:
     expected = math.pi / size.length**2 * math.sqrt(flexural / (aluminium.density * size.thickness))
 
     computed = vibrationService.naturalFrequencyHz(
-        StructureKind.simplySupportedPlate, 1, size, aluminium
+        StructureKind.simplySupportedPlate, 1, parametersOf(size, aluminium)
     )
 
     assert math.isclose(computed, expected, rel_tol=1e-9)
@@ -284,17 +310,12 @@ def testASquarePlateFundamentalMatchesTheClosedForm() -> None:
 def testBeamFrequencyScalesWithThicknessOverLengthSquared() -> None:
     kind = StructureKind.cantileverBeam
     base = StructureSize(0.3, 0.01, 0.003)
-    f = vibrationService.naturalFrequencyHz(kind, 1, base, aluminium)
+    f = vibrationService.naturalFrequencyHz(kind, 1, parametersOf(base, aluminium))
 
-    twiceAsThick = vibrationService.naturalFrequencyHz(
-        kind, 1, StructureSize(0.3, 0.01, 0.006), aluminium
-    )
-    twiceAsLong = vibrationService.naturalFrequencyHz(
-        kind, 1, StructureSize(0.6, 0.01, 0.003), aluminium
-    )
-    twiceAsWide = vibrationService.naturalFrequencyHz(
-        kind, 1, StructureSize(0.3, 0.02, 0.003), aluminium
-    )
+    frequency = vibrationService.naturalFrequencyHz
+    twiceAsThick = frequency(kind, 1, parametersOf(StructureSize(0.3, 0.01, 0.006), aluminium))
+    twiceAsLong = frequency(kind, 1, parametersOf(StructureSize(0.6, 0.01, 0.003), aluminium))
+    twiceAsWide = frequency(kind, 1, parametersOf(StructureSize(0.3, 0.02, 0.003), aluminium))
 
     assert math.isclose(twiceAsThick, 2 * f)
     assert math.isclose(twiceAsLong, f / 4)
@@ -305,10 +326,10 @@ def testBeamFrequencyScalesWithThicknessOverLengthSquared() -> None:
 def testFrequencyScalesWithTheSquareRootOfStiffnessOverDensity() -> None:
     size = StructureSize(0.3, 0.2, 0.003)
     stiffer = MaterialProperties(density=2700.0, youngsModulus=4 * 7.0e10)
-    for kind in StructureKind:
-        f = vibrationService.naturalFrequencyHz(kind, 1, size, aluminium)
+    for kind in (k for k in StructureKind if k.isBeam or k.isPlate):
+        f = vibrationService.naturalFrequencyHz(kind, 1, parametersOf(size, aluminium))
         assert math.isclose(
-            vibrationService.naturalFrequencyHz(kind, 1, size, stiffer), 2 * f
+            vibrationService.naturalFrequencyHz(kind, 1, parametersOf(size, stiffer)), 2 * f
         ), kind
 
 
@@ -316,10 +337,10 @@ def testHigherBeamModesKeepTheTheoreticalRatios() -> None:
     size = StructureSize(0.3, 0.01, 0.003)
     for kind in (StructureKind.cantileverBeam, StructureKind.clampedBeam,
                  StructureKind.simplySupportedBeam):
-        f1 = vibrationService.naturalFrequencyHz(kind, 1, size, aluminium)
+        f1 = vibrationService.naturalFrequencyHz(kind, 1, parametersOf(size, aluminium))
         for mode in (2, 3):
-            fn = vibrationService.naturalFrequencyHz(kind, mode, size, aluminium)
-            assert math.isclose(fn / f1, vibrationService.beamFrequencyRatio(kind, mode))
+            fn = vibrationService.naturalFrequencyHz(kind, mode, parametersOf(size, aluminium))
+            assert math.isclose(fn / f1, beamSystem.beamFrequencyRatio(kind, mode))
 
 
 @pytest.mark.parametrize(
@@ -338,15 +359,16 @@ def testPoissonsRatioStiffensThePlateOnly() -> None:
     rubbery = MaterialProperties(2700.0, 7.0e10, poissonRatio=0.45)
     plate = StructureKind.simplySupportedPlate
 
-    ratio = vibrationService.naturalFrequencyHz(
-        plate, 1, size, rubbery
-    ) / vibrationService.naturalFrequencyHz(plate, 1, size, cork)
+    frequency = vibrationService.naturalFrequencyHz
+    ratio = frequency(plate, 1, parametersOf(size, rubbery)) / frequency(
+        plate, 1, parametersOf(size, cork)
+    )
 
     assert math.isclose(ratio, 1 / math.sqrt(1 - 0.45**2))
     for beam in (StructureKind.cantileverBeam, StructureKind.simplySupportedBeam):
-        assert vibrationService.naturalFrequencyHz(
-            beam, 1, size, rubbery
-        ) == vibrationService.naturalFrequencyHz(beam, 1, size, cork)
+        assert frequency(beam, 1, parametersOf(size, rubbery)) == frequency(
+            beam, 1, parametersOf(size, cork)
+        )
 
 
 def testASingleModeSetupIsPacedByItsOwnMode() -> None:
@@ -358,3 +380,94 @@ def testASingleModeSetupIsPacedByItsOwnMode() -> None:
     assert single.referenceFrequencyHz == single.terms[0].frequencyHz
     assert single.referenceFrequencyHz > single.fundamentalFrequencyHz
     assert superposed.referenceFrequencyHz == superposed.fundamentalFrequencyHz
+
+
+def testEachKindHasItsOwnProportions() -> None:
+    plate = StructureKind.simplySupportedPlate
+    beam = StructureKind.cantileverBeam
+
+    assert vibrationService.lengthToWidthFor(plate) == 2.0
+    # The beam's ratio is the default size's, so the two cannot drift apart.
+    assert vibrationService.lengthToWidthFor(beam) == 30.0
+    assert vibrationService.widthForKind(plate, 0.4) == 0.2
+    assert vibrationService.widthForKind(beam, 0.3) == vibrationService.defaultSize.width
+
+
+def testAProposedWidthStaysWithinTheLimits() -> None:
+    low, high = vibrationService.widthRange
+
+    assert vibrationService.widthForKind(StructureKind.cantileverBeam, 0.01) == low
+    assert vibrationService.widthForKind(StructureKind.simplySupportedPlate, 10.0) == high
+
+
+# ----- the plate clamped on all four edges ------------------------------------
+
+# lambda = omega a^2 sqrt(rho h / D) with a the longer side, from the
+# literature: exact for the simply supported plate, and the accepted values
+# for the clamped one, which has no closed form.
+publishedPlateLambda = [
+    (StructureKind.simplySupportedPlate, (1, 1), 1.0, 1.0, 19.74),
+    (StructureKind.simplySupportedPlate, (2, 1), 1.0, 1.0, 49.35),
+    (StructureKind.clampedPlate, (1, 1), 1.0, 1.0, 35.99),
+    (StructureKind.clampedPlate, (1, 2), 1.0, 1.0, 73.41),
+    (StructureKind.clampedPlate, (2, 2), 1.0, 1.0, 108.27),
+    (StructureKind.clampedPlate, (1, 1), 2.0, 1.0, 98.32),
+]
+
+
+@pytest.mark.parametrize("kind, mn, length, width, published", publishedPlateLambda)
+def testPlateFrequencyParametersMatchTheLiterature(kind, mn, length, width, published) -> None:
+    computed = plateSystem.plateFrequencyParameter(kind, mn, length, width)
+
+    # Warburton's approximation is within about 1 % of the exact values.
+    assert computed == pytest.approx(published, rel=0.01)
+
+
+def testClampingTheEdgesRaisesEveryFrequency() -> None:
+    size = StructureSize(0.4, 0.3, 0.002)
+
+    for mode in (1, 2, 3):
+        supported = vibrationService.naturalFrequencyHz(
+            StructureKind.simplySupportedPlate, mode, parametersOf(size, aluminium)
+        )
+        clamped = vibrationService.naturalFrequencyHz(
+            StructureKind.clampedPlate, mode, parametersOf(size, aluminium)
+        )
+        assert clamped > supported
+
+
+def testTheClampedPlateIsFlatAndStillAtItsEdges() -> None:
+    """Clamped means no displacement and no slope: the shape leaves flat."""
+    geometry = vibrationService.buildGeometry(
+        StructureKind.clampedPlate, parametersOf(StructureSize(0.4, 0.3, 0.002))
+    )
+    shape = plateSystem.plateModeShape(
+        StructureKind.clampedPlate, (1, 1), geometry.x, geometry.y,
+        geometry.length, geometry.width,
+    )
+    alongCentre = np.argsort(geometry.x[np.isclose(geometry.y, 0.0)])
+    centreLine = shape[np.isclose(geometry.y, 0.0)][alongCentre]
+
+    assert abs(centreLine[0]) < 1e-6
+    assert abs(centreLine[-1]) < 1e-3
+    # The shape leaves the edge almost flat: the first step along it is far
+    # smaller than one at the quarter point, where the slope is steepest. A
+    # simply supported plate, which leaves its edge straight, has no such gap.
+    quarter = len(centreLine) // 4
+    firstStep = abs(centreLine[1] - centreLine[0])
+    steepStep = abs(centreLine[quarter] - centreLine[quarter - 1])
+    assert firstStep < steepStep / 5
+
+
+def testPoissonsRatioStillReachesTheClampedPlateThroughItsStiffness() -> None:
+    """It drops out of Warburton's formula, but not out of D."""
+    size = StructureSize(0.4, 0.3, 0.002)
+    stiff = MaterialProperties(2700.0, 7.0e10, poissonRatio=0.45)
+    soft = MaterialProperties(2700.0, 7.0e10, poissonRatio=0.0)
+
+    frequency = vibrationService.naturalFrequencyHz
+    ratio = frequency(
+        StructureKind.clampedPlate, 1, parametersOf(size, stiff)
+    ) / frequency(StructureKind.clampedPlate, 1, parametersOf(size, soft))
+
+    assert ratio == pytest.approx(1 / math.sqrt(1 - 0.45**2))

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from transverseVibrationView.models.vibrationModel import MaterialProperties
-from transverseVibrationView.services import materialPresets, vibrationService
+from structuralVibrationView.models.vibrationModel import MaterialProperties
+from structuralVibrationView.services import materialPresets, vibrationService
 
 
 @pytest.mark.parametrize("name, material", materialPresets.materialPresets)

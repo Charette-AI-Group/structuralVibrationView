@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from PySide6.QtGui import QValidator
 
-from transverseVibrationView.ui.widgets.scientificSpinBox import ScientificSpinBox
+from structuralVibrationView.ui.widgets.scientificSpinBox import ScientificSpinBox
 
 
 @pytest.fixture

@@ -5,9 +5,10 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence
 
-from transverseVibrationView import appConfig
-from transverseVibrationView.services import themeService
-from transverseVibrationView.ui.mainWindow import MainWindow
+from structuralVibrationView import appConfig
+from structuralVibrationView.models.vibrationModel import StructureKind
+from structuralVibrationView.services import themeService
+from structuralVibrationView.ui.mainWindow import MainWindow
 
 
 def testMainWindowOpens(qtbot) -> None:
@@ -16,7 +17,7 @@ def testMainWindowOpens(qtbot) -> None:
     mainWindow.show()
 
     assert mainWindow.isVisible()
-    assert mainWindow.windowTitle() == "Transverse Structural Vibration View"
+    assert mainWindow.windowTitle() == "Structural Vibration View"
     # The bar says what is on screen from the first frame, not "Ready".
     assert mainWindow.statusBar().currentMessage().startswith("Cantilever Beam: Mode 1")
 
@@ -52,7 +53,7 @@ def testMenuBarStructure(qtbot) -> None:
     assert menuTitles == ["&File", "&Help"]
 
     fileItems = [a.text() for a in mainWindow.fileMenu.actions() if not a.isSeparator()]
-    assert fileItems == ["&New", "&Open...", "&Save", "E&xit"]
+    assert fileItems == ["&Open...", "&Save...", "E&xit"]
     assert any(a.isSeparator() for a in mainWindow.fileMenu.actions())
 
     helpItems = [a.text() for a in mainWindow.helpMenu.actions() if not a.isSeparator()]
@@ -96,26 +97,12 @@ def testSavedThemeIsRestoredOnNextLaunch(qtbot) -> None:
     assert reopened.themeActions[themeService.lightTheme].isChecked()
 
 
-def testFileMenuPlaceholdersUpdateStatus(qtbot) -> None:
-    mainWindow = MainWindow()
-    qtbot.addWidget(mainWindow)
-
-    mainWindow.newAction.trigger()
-    assert mainWindow.statusBar().currentMessage() == "File > New selected"
-
-    mainWindow.openAction.trigger()
-    assert mainWindow.statusBar().currentMessage() == "File > Open selected"
-
-    mainWindow.saveAction.trigger()
-    assert mainWindow.statusBar().currentMessage() == "File > Save selected"
-
-
 def testAboutOpensTheDialogAndReportsADonation(qtbot, monkeypatch) -> None:
     """The About text itself is covered in testAboutDialog."""
     mainWindow = MainWindow()
     qtbot.addWidget(mainWindow)
     monkeypatch.setattr(
-        "transverseVibrationView.ui.mainWindow.showAbout", lambda parent: True
+        "structuralVibrationView.ui.mainWindow.showAbout", lambda parent: True
     )
 
     mainWindow.onHelpAbout()
@@ -127,7 +114,7 @@ def openedUrls(monkeypatch) -> list[str]:
     """Collect what the app asked the desktop to open, and say it worked."""
     opened: list[str] = []
     monkeypatch.setattr(
-        "transverseVibrationView.ui.mainWindow.QDesktopServices.openUrl",
+        "structuralVibrationView.ui.mainWindow.QDesktopServices.openUrl",
         lambda url: opened.append(url.toString()) or True,
     )
     return opened
@@ -185,7 +172,7 @@ def testAMissingManualLeavesTheReaderAnAddress(qtbot, monkeypatch, tmp_path) -> 
     openedUrls(monkeypatch)
     shown: list[str] = []
     monkeypatch.setattr(
-        "transverseVibrationView.ui.mainWindow.QMessageBox.information",
+        "structuralVibrationView.ui.mainWindow.QMessageBox.information",
         lambda parent, title, text: shown.append(text),
     )
 
@@ -300,3 +287,160 @@ def testTheSelectedModeIsTheDefaultAtTheNextLaunch(qtbot) -> None:
     controls.tabs.setCurrentIndex(1)
     assert [term.modeNumber for term in reopened.vibrationView.model.terms] == [4]
     reopened.vibrationView.shutdown()
+
+
+
+# ----- File > Save and File > Open -------------------------------------------
+
+
+def chooseFile(monkeypatch, dialog: str, path) -> None:
+    """Answer the next file dialog with this path, or cancel it with None."""
+    monkeypatch.setattr(
+        f"structuralVibrationView.ui.mainWindow.QFileDialog.{dialog}",
+        lambda *args, **kwargs: (str(path) if path else "", ""),
+    )
+
+
+def stageEverything(window: MainWindow) -> None:
+    """Change something in every group, so a round trip has something to prove."""
+    view = window.vibrationView
+    controls = view.controls
+    controls.showKind(StructureKind.clampedBeam)
+    controls.dampingSpin.setValue(0.02)
+    controls.modeRows[1].amplitudeSpin.setValue(0.03)
+    controls.modeRows[1].phaseSpin.setValue(90.0)
+    controls.modeRows[2].numberSpin.setValue(5)
+    tab = controls.structureTab
+    tab.modeCombo.setCurrentIndex(2)
+    tab.lengthSpin.setValue(0.5)
+    tab.thicknessSpin.setValue(0.004)
+    index = tab.materialCombo.findText("Steel")
+    tab.materialCombo.setCurrentIndex(index)
+    tab.materialCombo.activated.emit(index)
+    controls.tabs.setCurrentIndex(1)
+    controls.speedSpin.setValue(0.25)
+    controls.playButton.setChecked(False)
+    view.timeSeconds = 0.0123
+    view.showPresetView("xz")
+
+
+def testSaveThenOpenPutsTheWholeWindowBack(qtbot, monkeypatch, tmp_path) -> None:
+    path = tmp_path / "study.tvv"
+    first = MainWindow()
+    qtbot.addWidget(first)
+    stageEverything(first)
+    saved = first.vibrationView.captureSession()
+    chooseFile(monkeypatch, "getSaveFileName", path)
+
+    first.saveAction.trigger()
+
+    assert path.is_file()
+    assert first.statusBar().currentMessage() == "Saved study.tvv."
+    first.vibrationView.shutdown()
+
+    fresh = MainWindow()
+    qtbot.addWidget(fresh)
+    chooseFile(monkeypatch, "getOpenFileName", path)
+
+    fresh.openAction.trigger()
+
+    view = fresh.vibrationView
+    controls = view.controls
+    assert view.captureSession() == saved
+    # And what the window shows follows from it, not just the stored values.
+    assert controls.tabs.currentIndex() == 1
+    assert controls.structureTab.materialCombo.currentText() == "Steel"
+    assert not view.isPlaying()
+    assert controls.playButton.text() == "Play"
+    assert [term.modeNumber for term in view.model.terms] == [3]
+    assert view.model.geometry.kind is StructureKind.clampedBeam
+    assert fresh.statusBar().currentMessage() == "Opened study.tvv."
+    view.shutdown()
+
+
+def testSaveAddsTheExtensionWhenLeftOff(qtbot, monkeypatch, tmp_path) -> None:
+    window = MainWindow()
+    qtbot.addWidget(window)
+    chooseFile(monkeypatch, "getSaveFileName", tmp_path / "plain")
+
+    window.saveAction.trigger()
+
+    assert (tmp_path / "plain.tvv").is_file()
+    window.vibrationView.shutdown()
+
+
+def testCancellingTheDialogsChangesNothing(qtbot, monkeypatch) -> None:
+    window = MainWindow()
+    qtbot.addWidget(window)
+    before = window.vibrationView.captureSession()
+    message = window.statusBar().currentMessage()
+    chooseFile(monkeypatch, "getSaveFileName", None)
+    chooseFile(monkeypatch, "getOpenFileName", None)
+
+    window.saveAction.trigger()
+    window.openAction.trigger()
+
+    assert window.vibrationView.captureSession() == before
+    assert window.statusBar().currentMessage() == message
+    window.vibrationView.shutdown()
+
+
+def testABadFileIsReportedAndTheWindowLeftAlone(qtbot, monkeypatch, tmp_path) -> None:
+    path = tmp_path / "broken.tvv"
+    path.write_text('{"format": "somethingElse"}', encoding="utf-8")
+    window = MainWindow()
+    qtbot.addWidget(window)
+    before = window.vibrationView.captureSession()
+    shown: list[tuple[str, str]] = []
+    monkeypatch.setattr(MainWindow, "showError", lambda self, t, m: shown.append((t, m)))
+    chooseFile(monkeypatch, "getOpenFileName", path)
+
+    window.openAction.trigger()
+
+    assert shown and shown[0][0] == "Open Session"
+    assert "broken.tvv could not be opened" in shown[0][1]
+    assert window.vibrationView.captureSession() == before
+    window.vibrationView.shutdown()
+
+
+def testTheDialogsStartWhereTheLastSessionWas(qtbot, monkeypatch, tmp_path) -> None:
+    window = MainWindow()
+    qtbot.addWidget(window)
+    chooseFile(monkeypatch, "getSaveFileName", tmp_path / "first.tvv")
+    window.saveAction.trigger()
+    asked: list[str] = []
+    monkeypatch.setattr(
+        "structuralVibrationView.ui.mainWindow.QFileDialog.getOpenFileName",
+        lambda parent, title, folder, filters: asked.append(folder) or ("", ""),
+    )
+
+    window.openAction.trigger()
+
+    assert asked == [str(tmp_path)]
+    window.vibrationView.shutdown()
+
+
+def testTheStiffnessIsSavedAndReopened(qtbot, monkeypatch, tmp_path) -> None:
+    path = tmp_path / "oscillator.tvv"
+    first = MainWindow()
+    qtbot.addWidget(first)
+    controls = first.vibrationView.controls
+    combo = controls.kindCombo
+    combo.setCurrentIndex(combo.findData(StructureKind.springMass.value))
+    controls.structureTab.springStiffnessSpin.setValue(2500.0)
+    chooseFile(monkeypatch, "getSaveFileName", path)
+    first.saveAction.trigger()
+    first.close()  # also writes it to the settings
+
+    reopened = MainWindow()
+    qtbot.addWidget(reopened)
+    assert reopened.vibrationView.controls.structureTab.springStiffnessSpin.value() == 2500.0
+    chooseFile(monkeypatch, "getOpenFileName", path)
+
+    reopened.openAction.trigger()
+
+    view = reopened.vibrationView
+    assert view.model.geometry.kind is StructureKind.springMass
+    assert view.model.setup.springStiffness == 2500.0
+    assert len(view.meshes) == 2
+    view.shutdown()

@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from transverseVibrationView.models.vibrationModel import (
+from structuralVibrationView.models.vibrationModel import (
     MaterialProperties,
     StructureParameters,
     StructureSize,
 )
-from transverseVibrationView.services import (
+from structuralVibrationView.services import (
     settingsService,
     structureParametersService,
     vibrationService,

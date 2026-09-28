@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QByteArray
 
-from transverseVibrationView.services import settingsService, windowGeometryService
+from structuralVibrationView.services import settingsService, windowGeometryService
 
 
 def testNothingIsSavedOnAFirstRun() -> None:

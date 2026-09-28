@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from transverseVibrationView.ui.mainWindow import MainWindow
-from transverseVibrationView.ui.widgets.reportingView import ReportingView
+from structuralVibrationView.ui.mainWindow import MainWindow
+from structuralVibrationView.ui.widgets.reportingView import ReportingView
 
 longFailure = (
     "The device did not answer. The usual cause is another application holding "
