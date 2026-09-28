@@ -1,0 +1,23 @@
+# Line endings, pinned here rather than left to each machine's core.autocrlf.
+# Without this file a clone on a differently configured machine can rewrite
+# every line of every file, and the diff that follows says nothing.
+
+# Normalise text to LF in the repository; check out native on Windows.
+* text=auto
+
+*.py             text diff=python
+*.md             text
+*.toml           text
+*.gitignore      text
+*.code-workspace text
+
+# Read by cmd.exe, which wants CRLF whatever the platform normally gets.
+*.cmd text eol=crlf
+
+# Icons, drawn by tools/makeIcons.py. Binary: never normalised, never merged,
+# and never shown as a wall of unreadable diff.
+*.ico binary
+*.png binary
+
+# Saved sessions: JSON, but the app's own format.
+*.tvv text

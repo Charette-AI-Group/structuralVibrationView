@@ -44,8 +44,7 @@ manualPath = projectRoot / "docs" / "manual" / "README.md"
 # request is made at all, which is the honest default: a new app has nothing
 # published yet, and deriving a URL from repoUrl would hand most apps an
 # address that 404s and a wait to discover it.
-#     manualUrl = f"{repoUrl}/blob/main/docs/manual/README.md"
-manualUrl = ""
+manualUrl = f"{repoUrl}/blob/main/docs/manual/README.md"
 # How long to wait for the published copy before falling back to the local one.
 manualTimeoutSeconds = 3.0
 

@@ -1,0 +1,278 @@
+/* FRWB site — self-contained, no external fonts or frameworks.
+   Built on the sheet the sibling CloakClip site uses, so the two read as
+   coming from the same place. The accent is FRWB's own teal, taken from the
+   application icon. */
+
+:root {
+  --accent: #0f766e;
+  --accent-strong: #0c6058;
+  --accent-soft: rgba(15, 118, 110, 0.10);
+  /* What sits on top of the accent. The teal is dark on a light theme and
+     bright on a dark one, so the text has to flip with it or fall below the
+     4.5:1 minimum — the same reason the Rename button in the app has two
+     palettes rather than one. */
+  --accent-text: #ffffff;
+  --donate: #15803d;
+  --donate-strong: #166534;
+  --danger: #b3261e;
+  --bg: #ffffff;
+  --bg-alt: #f6f9f9;
+  --bg-code: #f1f5f5;
+  --text: #1b2426;
+  --text-muted: #56646a;
+  --border: #e0e8e8;
+  --shadow: 0 1px 2px rgba(16, 40, 40, 0.05), 0 8px 24px rgba(16, 40, 40, 0.07);
+  --radius: 10px;
+  --maxWidth: 1120px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #2dd4bf;
+    --accent-strong: #5ee7d6;
+    --accent-soft: rgba(45, 212, 191, 0.13);
+    --accent-text: #0b1220;
+    --donate: #15803d;
+    --donate-strong: #1a9e4b;
+    --danger: #ff8a80;
+    --bg: #12181a;
+    --bg-alt: #182022;
+    --bg-code: #1d2628;
+    --text: #e6edee;
+    --text-muted: #9fb0b3;
+    --border: #273336;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 .5em; font-weight: 650; }
+h2 { font-size: 1.65rem; margin-top: 0; letter-spacing: -0.01em; }
+h3 { font-size: 1.15rem; margin-top: 2rem; }
+h4 { font-size: 1rem; margin-top: 1.5rem; color: var(--text); }
+p { margin: 0 0 1rem; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+ul, ol { margin: 0 0 1rem; padding-left: 1.25rem; }
+li { margin-bottom: .45rem; }
+strong { font-weight: 650; }
+
+code, kbd {
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+  font-size: .875em;
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: .12em .4em;
+}
+kbd { font-weight: 600; }
+
+img { max-width: 100%; height: auto; }
+
+.wrap { max-width: var(--maxWidth); margin: 0 auto; padding: 0 24px; }
+
+/* ---------------------------------------------------------------- nav -- */
+
+.siteNav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.siteNav .wrap { display: flex; align-items: center; gap: 24px; height: 62px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--text); }
+.brand:hover { text-decoration: none; }
+.brand img { width: 26px; height: 26px; border-radius: 6px; }
+.navLinks { display: flex; gap: 20px; margin-left: auto; align-items: center; }
+.navLinks a { color: var(--text-muted); font-size: .93rem; }
+.navLinks a:hover { color: var(--accent); text-decoration: none; }
+
+@media (max-width: 900px) { .navLinks a:not(.btnSmall) { display: none; } }
+@media (max-width: 520px) { .wideOnly { display: none; } .navLinks { gap: 10px; } }
+
+/* -------------------------------------------------------------- hero --- */
+
+.hero { padding: 72px 0 56px; border-bottom: 1px solid var(--border); }
+.heroGrid { display: grid; grid-template-columns: 1fr; gap: 40px; }
+.heroText { max-width: 760px; }
+.heroIcon { width: 76px; height: 76px; border-radius: 18px; margin-bottom: 20px; box-shadow: var(--shadow); }
+.hero h1 { font-size: 2.9rem; letter-spacing: -0.025em; margin-bottom: .35em; }
+.heroLead { font-size: 1.18rem; color: var(--text-muted); margin-bottom: 1.75rem; }
+.heroShot { border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); display: block; width: 100%; }
+
+@media (max-width: 860px) {
+  .hero { padding: 48px 0 40px; }
+  .hero h1 { font-size: 2.1rem; }
+}
+
+/* ------------------------------------------------------------ buttons -- */
+
+.btnRow { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+.btn {
+  display: inline-block;
+  padding: 11px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: .95rem;
+  border: 1px solid transparent;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+.btn:hover { text-decoration: none; }
+.btnPrimary { background: var(--accent); color: var(--accent-text); }
+.btnPrimary:hover { background: var(--accent-strong); color: var(--accent-text); }
+.btnGhost { border-color: var(--border); color: var(--text); background: var(--bg); }
+.btnGhost:hover { border-color: var(--accent); color: var(--accent); }
+.btnSmall {
+  padding: 7px 14px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: var(--accent-text) !important;
+  font-weight: 600;
+  font-size: .88rem;
+  white-space: nowrap;
+}
+.btnSmall:hover { background: var(--accent-strong); text-decoration: none; }
+.btnDonate { background: var(--donate); color: #fff !important; }
+.btnDonate:hover { background: var(--donate-strong); }
+
+.fineprint { color: var(--text-muted); font-size: .875rem; margin-top: 1rem; }
+
+/* ------------------------------------------------------------ layout --- */
+
+.band { padding: 64px 0; border-bottom: 1px solid var(--border); }
+.band.alt { background: var(--bg-alt); }
+.bandHead { max-width: 760px; margin-bottom: 36px; }
+.bandHead p { color: var(--text-muted); font-size: 1.05rem; margin-bottom: 0; }
+
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+}
+.card h3 { margin: 0 0 .4rem; font-size: 1.02rem; }
+.card p { margin: 0; color: var(--text-muted); font-size: .95rem; }
+
+@media (max-width: 860px) { .cards { grid-template-columns: 1fr; } }
+
+/* --------------------------------------------------------- manual ------ */
+
+.manualGrid { display: grid; grid-template-columns: 236px 1fr; gap: 48px; align-items: start; }
+
+.toc { position: sticky; top: 86px; font-size: .92rem; }
+.toc strong {
+  display: block;
+  font-size: .74rem;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.toc ol { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--border); }
+.toc li { margin: 0; }
+.toc a {
+  display: block;
+  padding: 6px 0 6px 14px;
+  margin-left: -2px;
+  border-left: 2px solid transparent;
+  color: var(--text-muted);
+}
+.toc a:hover { color: var(--accent); border-left-color: var(--accent); text-decoration: none; }
+
+.manualBody > section { scroll-margin-top: 86px; }
+.manualBody > section + section {
+  margin-top: 44px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 860px) {
+  .manualGrid { grid-template-columns: 1fr; gap: 28px; }
+  .toc { position: static; }
+}
+
+figure { margin: 22px 0; }
+figure img { border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); display: block; }
+figcaption { color: var(--text-muted); font-size: .875rem; margin-top: 10px; }
+
+.note {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 8px 8px 0;
+  padding: 14px 18px;
+  margin: 22px 0;
+}
+.note p:last-child { margin-bottom: 0; }
+.note strong { color: var(--text); }
+
+.steps { counter-reset: step; list-style: none; padding: 0; }
+.steps li { counter-increment: step; position: relative; padding-left: 42px; margin-bottom: 14px; }
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0; top: -1px;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: .85rem;
+  font-weight: 650;
+  display: grid;
+  place-items: center;
+}
+
+table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: .95rem; }
+th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-weight: 650; background: var(--bg-alt); }
+.tableScroll { overflow-x: auto; }
+
+/* A colour swatch in the preview-colours table, so the meaning of each is
+   shown rather than only named. */
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; border: 1px solid var(--border); }
+.swatchConflict { background: #e0503c; }
+.swatchInvalid { background: #d98c1f; }
+.swatchUnchanged { background: var(--text-muted); }
+.swatchRenamed { background: var(--accent); }
+
+/* -------------------------------------------------------- download ----- */
+
+.downloadGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 8px; }
+.downloadCard {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 26px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+.downloadCard h3 { margin-top: 0; }
+.downloadCard p { color: var(--text-muted); font-size: .95rem; }
+.downloadCard .btn { margin-top: auto; text-align: center; }
+
+@media (max-width: 860px) { .downloadGrid { grid-template-columns: 1fr; } }
+
+/* ---------------------------------------------------------- donate ----- */
+
+.donate { max-width: 760px; }
+.donate h2 { margin-bottom: .6em; }
+
+/* ---------------------------------------------------------- footer ----- */
+
+.siteFooter { padding: 32px 0; color: var(--text-muted); font-size: .9rem; }
+.siteFooter .wrap { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; }

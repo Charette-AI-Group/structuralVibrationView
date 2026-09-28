@@ -1,0 +1,56 @@
+# Snapshots the repository traffic numbers into traffic/traffic.csv.
+#
+# GitHub keeps only the last 14 days of clone and view data and then discards
+# it permanently, so this records it weekly while it is still available. The
+# 14-day window leaves a week of slack: one missed run loses nothing.
+#
+# If this ever fails with 403, the default GITHUB_TOKEN was not accepted for
+# the traffic endpoints (they require push access). Create a PAT with the
+# repository "Administration: read" permission, save it as the repository
+# secret TRAFFIC_TOKEN, and it will be used automatically.
+
+name: traffic
+
+on:
+  schedule:
+    # Mondays at 06:00 UTC.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+# Never let two runs commit at once.
+concurrency:
+  group: traffic
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Record traffic
+        env:
+          # Falls back to GITHUB_TOKEN when the secret is not set.
+          GITHUB_TOKEN: ${{ secrets.TRAFFIC_TOKEN || secrets.GITHUB_TOKEN }}
+        run: python tools/recordTraffic.py
+
+      - name: Commit if the numbers changed
+        run: |
+          if git diff --quiet -- traffic/traffic.csv; then
+            echo "No change in the recorded traffic."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add traffic/traffic.csv
+          git commit -m "Record repository traffic through $(date -u +%Y-%m-%d)"
+          git push

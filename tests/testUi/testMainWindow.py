@@ -133,9 +133,10 @@ def testTheStubManualShipsWithTheTemplate() -> None:
     assert appConfig.manualPath.read_text(encoding="utf-8").strip()
 
 
-def testNothingIsPublishedUntilTheAuthorSaysSo() -> None:
-    """A new app has no manual online, so the default must not pretend it has."""
-    assert appConfig.manualUrl == ""
+def testThePublishedManualIsTheOneInTheRepository() -> None:
+    """Help > User Manual prefers it, and falls back to the copy in the checkout."""
+    assert appConfig.manualUrl == f"{appConfig.repoUrl}/blob/main/docs/manual/README.md"
+    assert appConfig.repoUrl.endswith("/structuralVibrationView")
 
 
 def testTheLocalCopyIsOpenedWhenNothingIsPublished(qtbot, monkeypatch) -> None:
@@ -179,7 +180,8 @@ def testAMissingManualLeavesTheReaderAnAddress(qtbot, monkeypatch, tmp_path) -> 
     mainWindow.openManual(publishedIsReachable=False)
 
     assert shown and "gone.md" in shown[0]
-    assert "nothing published" in shown[0]
+    # Both copies, so the reader can reach whichever one exists.
+    assert appConfig.manualUrl in shown[0]
 
 
 def testTheCheckRunsOffTheInterfaceThread(qtbot, monkeypatch) -> None:

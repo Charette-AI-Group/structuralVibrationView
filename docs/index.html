@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Structural Vibration View — Watch a Structure Vibrate, in 3D</title>
+  <meta name="description"
+    content="Structural Vibration View animates the free vibration of beams, plates and a spring-mass oscillator in a 3D view you can rotate while it moves. Natural frequencies from the material and the dimensions. Free and open source.">
+  <meta name="author" content="Charette AI Group">
+  <link rel="icon" href="img/icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <nav class="siteNav">
+    <div class="wrap">
+      <a class="brand" href="#top"><img src="img/icon.png" alt="">Structural Vibration View</a>
+      <div class="navLinks">
+        <a href="#purpose">Why</a>
+        <a href="#quickstart">Quick start</a>
+        <a href="#systems">Systems</a>
+        <a href="#manual">Manual</a>
+        <a class="btnSmall" href="#download">Get<span class="wideOnly"> the app</span></a>
+        <a class="btnSmall btnDonate" href="https://www.paypal.com/donate/?hosted_button_id=FEM4WLD7LHY36"
+          target="_blank" rel="noopener">Donate</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ------------------------------------------------------------ hero -->
+  <header class="hero" id="top">
+    <div class="wrap heroGrid">
+      <div class="heroText">
+        <img class="heroIcon" src="img/icon.png" alt="Structural Vibration View icon">
+        <h1>Watch a structure vibrate, in 3D.</h1>
+        <p class="heroLead">Pick a beam, a plate or a spring on a mass. Set its size and what it is
+          made of. The mode shape moves on screen at a pace you can follow, and you can rotate,
+          pan and zoom the view <em>while</em> it is moving.</p>
+        <div class="btnRow">
+          <a class="btn btnPrimary" href="#download">Get the app</a>
+          <a class="btn btnGhost" href="#manual">Read the manual</a>
+        </div>
+        <p class="fineprint">Version 0.1.0 &middot; Windows &middot; free and open source &middot;
+          MIT licence</p>
+      </div>
+      <img class="heroShot" src="img/beam.png"
+        alt="A cantilever beam vibrating in the 3D view, coloured by displacement">
+    </div>
+  </header>
+
+  <!-- --------------------------------------------------------- purpose -->
+  <section class="band" id="purpose">
+    <div class="wrap">
+      <div class="bandHead">
+        <h2>Vibration is a moving thing, and a textbook cannot move</h2>
+        <p>A mode shape drawn on paper is a frozen curve with arrows. On screen it is a structure
+          bending, and the difference is the whole point: you see where the nodes sit, how much of
+          the length actually moves, and how the second mode differs from the first.</p>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>Real frequencies</h3>
+          <p>Every frequency is computed from the dimensions, the density and the stiffness, with
+            the boundary conditions of the type you chose. Change the thickness and watch the
+            number move with it.</p>
+        </div>
+        <div class="card">
+          <h3>Slow motion that fits</h3>
+          <p>Real structures vibrate far too fast to see. The animation slows itself to the
+            structure, so mode 1 always takes two seconds per cycle whatever it runs at, and a
+            high mode is as watchable as a low one.</p>
+        </div>
+        <div class="card">
+          <h3>Modes on their own or together</h3>
+          <p>Study one mode by itself, or superpose three with their own amplitudes and phases and
+            watch them interfere. Add damping and see the motion decay.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------------- systems -->
+  <section class="band" id="systems">
+    <div class="wrap">
+      <div class="bandHead">
+        <h2>Six systems, three families</h2>
+        <p>Each family carries its own theory, and the app shows only the parameters that family
+          uses.</p>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>Beams</h3>
+          <p>Cantilever, simply supported, and clamped at both ends. Euler-Bernoulli theory, six
+            modes each.</p>
+        </div>
+        <div class="card">
+          <h3>Plates</h3>
+          <p>Simply supported on all four edges, or clamped on all four. Kirchhoff theory; the
+            clamped plate uses Warburton's frequencies, within about 1% of the published values.</p>
+        </div>
+        <div class="card">
+          <h3>Spring-mass</h3>
+          <p>One mass on one spring: the simplest vibrating system, and what each mode of a beam
+            behaves like on its own.</p>
+        </div>
+      </div>
+      <img class="heroShot" src="img/plate.png"
+        alt="A clamped plate in its first mode, the deflection concentrated in the middle">
+      <img class="heroShot" src="img/springMass.png"
+        alt="The spring-mass system, the coil stretched and the block lifted">
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------ quickstart -->
+  <section class="band" id="quickstart">
+    <div class="wrap">
+      <div class="bandHead">
+        <h2>Quick start</h2>
+      </div>
+      <ol class="steps">
+        <li><strong>Pick a Type.</strong> The list groups the beams, the plates and the
+          oscillator.</li>
+        <li><strong>Set the structure.</strong> On the Structure Parameters tab, give it a length,
+          a width and a thickness, and choose a material from the list or type your own density
+          and stiffness.</li>
+        <li><strong>Choose a mode.</strong> While that tab is open, the mode at the top plays on
+          its own, with its natural frequency beside it.</li>
+        <li><strong>Or superpose.</strong> Switch to Modal Superposition and give up to three
+          modes their own amplitude and phase, with a damping ratio for the decay.</li>
+        <li><strong>Look around.</strong> Drag to rotate while it moves, or use the X-Z, X-Y and
+          Y-Z buttons. Save the whole window to a file with <em>File &gt; Save</em> and open it
+          again later.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- manual -->
+  <section class="band" id="manual">
+    <div class="wrap">
+      <div class="bandHead">
+        <h2>The manual</h2>
+        <p>Every control, what it does, and the theory behind each system.</p>
+      </div>
+      <div class="manualGrid">
+        <div class="manualBody">
+          <p><a class="btn btnGhost"
+              href="https://github.com/Charette-AI-Group/structuralVibrationView/blob/main/docs/manual/README.md">Open
+              the user manual</a></p>
+          <p class="note">The same pages open inside the app under <strong>Help &gt; User
+              Manual</strong>, or by pressing F1.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- -------------------------------------------------------- download -->
+  <section class="band" id="download">
+    <div class="wrap">
+      <div class="bandHead">
+        <h2>Get the app</h2>
+        <p>There is no packaged installer yet. It runs from the source, which needs Python 3.14
+          and one install command.</p>
+      </div>
+      <div class="downloadGrid">
+        <div class="downloadCard">
+          <h3>From the source</h3>
+          <pre><code>git clone https://github.com/Charette-AI-Group/structuralVibrationView.git
+cd structuralVibrationView
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+structural-vibration-view</code></pre>
+          <p class="note">Windows, Python 3.14 or newer. The 3D view is PyVista on VTK, which the
+            install command brings with it.</p>
+        </div>
+      </div>
+      <p class="fineprint">Source on <a
+          href="https://github.com/Charette-AI-Group/structuralVibrationView">GitHub</a>, MIT
+        licence.</p>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- donate -->
+  <section class="band donate">
+    <div class="wrap">
+      <div class="bandHead">
+        <h2>Free, and staying that way</h2>
+        <p>If it saved you an afternoon, you can say thank you.</p>
+      </div>
+      <p class="btnRow">
+        <a class="btn btnDonate" href="https://www.paypal.com/donate/?hosted_button_id=FEM4WLD7LHY36"
+          target="_blank" rel="noopener">Donate</a>
+      </p>
+    </div>
+  </section>
+
+  <footer class="siteFooter">
+    <div class="wrap">
+      <p>Structural Vibration View &middot; &copy; 2026 Charette AI Group, LLC &middot; MIT
+        licence &middot; <a
+          href="https://github.com/Charette-AI-Group/structuralVibrationView">GitHub</a></p>
+    </div>
+  </footer>
+
+</body>
+
+</html>
