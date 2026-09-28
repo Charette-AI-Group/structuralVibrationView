@@ -215,7 +215,10 @@ def testClosingRemembersPositionAndSizeForTheNextLaunch(qtbot) -> None:
     first.show()
     first.setGeometry(140, 160, 900, 650)
     qtbot.waitUntil(lambda: first.width() == 900)
-    savedPosition = first.pos()
+    # What it actually ended up as, which is the thing that has to come back.
+    # A window manager is free to trim a size it cannot honour, and macOS
+    # takes a few pixels for its menu bar.
+    savedPosition, savedSize = first.pos(), first.size()
 
     first.close()
 
@@ -224,8 +227,7 @@ def testClosingRemembersPositionAndSizeForTheNextLaunch(qtbot) -> None:
     # The frame, and so pos(), only settles once the window is on screen.
     reopened.show()
     qtbot.waitExposed(reopened)
-    assert reopened.width() == 900
-    assert reopened.height() == 650
+    assert reopened.size() == savedSize
     assert reopened.pos() == savedPosition
     reopened.vibrationView.shutdown()
 

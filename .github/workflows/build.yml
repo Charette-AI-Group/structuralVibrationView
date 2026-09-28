@@ -26,8 +26,9 @@
 #            that will not start.
 #
 # This app draws with VTK through OpenGL, which a runner has no graphics card
-# for. Mesa's software renderer is installed on Windows for that reason; the
-# macOS runners answer with their own software OpenGL.
+# for. Both images answer with a software implementation instead, which is
+# slower and quite enough: nothing here judges a frame, only that one was
+# drawn at all.
 #
 # The tag has to agree with appConfig.appVersion. That is checked rather than
 # trusted: a release named after a version the application does not report is
@@ -64,10 +65,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.14"
-
-      - name: Install Mesa, so VTK has an OpenGL to draw through
-        if: runner.os == 'Windows'
-        run: choco install mesa --no-progress -y
 
       - name: Install the app and its dev dependencies
         run: |
@@ -119,10 +116,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.14"
-
-      - name: Install Mesa, so the built app's self-test can draw
-        if: runner.os == 'Windows'
-        run: choco install mesa --no-progress -y
 
       - name: Install the app and its build dependencies
         run: |
