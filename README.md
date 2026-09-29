@@ -170,8 +170,12 @@ default, so if the notes use Markdown headings, write them to a file and tag wit
 `--cleanup=whitespace` instead:
 
 ```powershell
-git tag -a v1.0.1 --cleanup=whitespace -F notes.md ; git push origin v1.0.1
+git tag -a v1.0.1 --cleanup=whitespace -F docseleaseNotes1.0.1.md ; git push origin v1.0.1
 ```
+
+Each release's notes are kept in [`docs/releaseNotes/`](docs/releaseNotes/), so the next one
+starts from the last rather than from an empty file, and what a published release said stays
+readable in the repository.
 
 ## Starting up
 
