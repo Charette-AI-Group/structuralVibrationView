@@ -48,6 +48,7 @@ def aboutHtml(year: int | None = None) -> str:
     return (
         f"<h3>{appConfig.appName}</h3>"
         f"<p>Version {appConfig.appVersion}</p>"
+        f"<p>{appConfig.appPurpose}</p>"
         f"<p>Editor: {appConfig.editorName}<br>"
         f"AI Agent: {appConfig.aiAgentName}</p>"
         f'<p>Source at <a href="{appConfig.repoUrl}">{appConfig.appName}</a>.</p>'

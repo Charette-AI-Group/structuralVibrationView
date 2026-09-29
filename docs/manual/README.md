@@ -1,8 +1,18 @@
 # Structural Vibration View — user manual
 
-The app animates the free transverse vibration of a beam or plate in a 3D view that you can
-rotate, pan and zoom while it moves. Mode shapes and frequency ratios come from closed-form
-Euler-Bernoulli beam and Kirchhoff plate theory, so what you see is the textbook motion.
+**What this is for.** Structural Vibration View is educational software: it exists to let
+students, engineers, researchers and hobbyists see how a simple structure deflects while it
+vibrates, rather than picture it from a formula. Everything in it is arranged around that -
+the slow motion, the colours, the one mode at a time, the frequencies that move when you change
+the material.
+
+The app animates the free transverse vibration of a beam, a plate or a spring-mass oscillator in
+a 3D view that you can rotate, pan and zoom while it moves. Mode shapes and frequencies come from
+closed-form Euler-Bernoulli beam and Kirchhoff plate theory, so what you see is the textbook
+motion.
+
+It is a teaching tool rather than an analysis package: the structures are uniform, the theory is
+closed-form, and a real part with holes, welds or joints needs a finite element model instead.
 
 ## Starting the app
 

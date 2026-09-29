@@ -1,8 +1,17 @@
 # Structural Vibration View
 
+**This is teaching software.** It exists so that students, engineers, researchers and anyone
+curious - including people building something in a garage - can *see* how a simple structure
+deflects while it vibrates, instead of reading a mode shape off a page. A mode shape drawn in a
+textbook is a frozen curve with arrows; here it is a structure bending, at a pace slow enough to
+follow, from an angle you choose.
+
 Animate the free vibration of a beam, a plate or a spring-mass oscillator in a 3D view you can
 rotate, pan and zoom while it moves. Natural frequencies come from the dimensions and the
 material, not from a number typed in. Built with PySide6 and PyVista.
+
+It is a teaching tool, not an analysis package: every structure is uniform, every result comes
+from closed-form theory, and nothing here replaces a finite element model for a real part.
 
 ## What it does
 

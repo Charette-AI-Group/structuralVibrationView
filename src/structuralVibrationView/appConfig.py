@@ -7,6 +7,14 @@ import sys
 from pathlib import Path
 
 appName = "Structural Vibration View"
+# What the app is for, in one sentence. The About box shows it, and the
+# README, the manual and the website open with the same words: somebody who
+# meets the app in any of those places should be told the same thing.
+appPurpose = (
+    "Educational software for seeing how a simple structure deflects while it "
+    "vibrates: for students, engineers, researchers and anyone curious enough "
+    "to want the shape rather than the formula."
+)
 appVersion = "0.1.0"
 organizationName = "Charette-AI-Group"
 

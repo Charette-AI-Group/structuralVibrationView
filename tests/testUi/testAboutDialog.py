@@ -18,6 +18,14 @@ def testAboutTextCarriesTheCredits() -> None:
     assert appConfig.repoUrl in text
 
 
+def testAboutSaysWhatTheAppIsFor() -> None:
+    """Somebody meeting it here is told the same thing the README says."""
+    text = aboutHtml(year=2026)
+
+    assert appConfig.appPurpose in text
+    assert "Educational" in appConfig.appPurpose
+
+
 def testDialogStartsWithNoDonationRequested(qtbot) -> None:
     dialog = AboutDialog()
     qtbot.addWidget(dialog)
