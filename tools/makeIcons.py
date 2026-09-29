@@ -34,6 +34,14 @@ repo = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(repo / "src"))
 outputDir = repo / "src" / "structuralVibrationView" / "resources"
 stem = "structuralVibrationView"
+# The website wears the same icon: a .ico for the browser tab, which is what a
+# browser asks for at /favicon.ico whatever the page says, and two PNGs for
+# the places that want one - the tab at high resolution, and the home screen
+# tile iOS makes when somebody saves the page.
+siteDir = repo / "docs"
+siteIconDir = siteDir / "img"
+tabIconSize = 32
+touchIconSize = 180
 
 import numpy as np  # noqa: E402
 from PySide6.QtCore import QBuffer, QPointF, QRectF, Qt  # noqa: E402
@@ -212,6 +220,18 @@ def main() -> int:
     sizes = "/".join(str(size) for size in iconSizes)
     print(f"{ico.relative_to(repo)}  {ico.stat().st_size / 1024:.1f} kB  ({sizes} px)")
     print(f"{png.relative_to(repo)}  1024 px")
+
+    # The website's copies, drawn at their own sizes like every other one.
+    siteIconDir.mkdir(parents=True, exist_ok=True)
+    favicon = siteDir / "favicon.ico"
+    favicon.write_bytes(packIco([(size, pngBytes(render(size))) for size in (16, 32, 48)]))
+    tabIcon = siteIconDir / f"icon-{tabIconSize}.png"
+    render(tabIconSize).save(str(tabIcon), "PNG")
+    touchIcon = siteIconDir / f"icon-{touchIconSize}.png"
+    render(touchIconSize).save(str(touchIcon), "PNG")
+    print(f"{favicon.relative_to(repo)}  {favicon.stat().st_size / 1024:.1f} kB  (16/32/48 px)")
+    print(f"{tabIcon.relative_to(repo)}  {tabIconSize} px")
+    print(f"{touchIcon.relative_to(repo)}  {touchIconSize} px")
     return 0
 
 
