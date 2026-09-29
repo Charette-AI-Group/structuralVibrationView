@@ -195,6 +195,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      # checkout leaves the tag as a ref to the commit, not as the annotated
+      # tag object, and git tag --format then quietly answers with the
+      # commit's message instead - which is how v0.1.0 was first published
+      # with a commit message for its release notes.
+      - name: Fetch the annotated tag itself
+        run: git fetch --force origin "refs/tags/${{ github.ref_name }}:refs/tags/${{ github.ref_name }}"
+
+      - name: Show what the tag says, so the notes can be checked afterwards
+        run: |
+          echo "tag type: $(git cat-file -t "${{ github.ref_name }}")"
+          git tag -l --format='%(contents)' "${{ github.ref_name }}" | head -20
+
       - name: Download the build artifacts
         uses: actions/download-artifact@v4
         with:
