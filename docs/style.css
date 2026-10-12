@@ -1,7 +1,7 @@
-/* FRWB site — self-contained, no external fonts or frameworks.
-   Built on the sheet the sibling CloakClip site uses, so the two read as
-   coming from the same place. The accent is FRWB's own teal, taken from the
-   application icon. */
+/* Structural Vibration View site — self-contained, no external fonts or
+   frameworks. Built on the sheet the sibling FRWB and CloakClip sites use, so
+   the three read as coming from the same place. The accent is the teal
+   inherited from them, not the violet of this application's own icon. */
 
 :root {
   --accent: #0f766e;
@@ -9,8 +9,8 @@
   --accent-soft: rgba(15, 118, 110, 0.10);
   /* What sits on top of the accent. The teal is dark on a light theme and
      bright on a dark one, so the text has to flip with it or fall below the
-     4.5:1 minimum — the same reason the Rename button in the app has two
-     palettes rather than one. */
+     4.5:1 minimum — the same reason ui/theme.py carries two accents rather
+     than one. */
   --accent-text: #ffffff;
   --donate: #15803d;
   --donate-strong: #166534;
