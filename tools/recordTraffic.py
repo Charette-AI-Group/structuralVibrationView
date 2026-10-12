@@ -55,7 +55,7 @@ def fetchTraffic(repository: str, kind: str, token: str) -> dict:
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "frwb-traffic-recorder",
+            "User-Agent": "structuralVibrationView-traffic-recorder",
         },
     )
     try:
