@@ -59,10 +59,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14"
 
@@ -110,10 +110,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14"
 
@@ -166,7 +166,7 @@ jobs:
       # ---------------------------------------------------------------------
 
       - name: Upload the build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifactName }}
           path: ${{ matrix.artifactPath }}
@@ -175,7 +175,7 @@ jobs:
       # Small, and the first thing worth reading when a build starts on the
       # runner but not on somebody's machine.
       - name: Upload the self-test report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: structuralVibrationViewSelfTest-${{ runner.os }}
           path: dist/selftest.txt
@@ -191,7 +191,7 @@ jobs:
     steps:
       # Only for the tag's own message, which becomes the release notes.
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -208,7 +208,7 @@ jobs:
           git tag -l --format='%(contents)' "${{ github.ref_name }}" | head -20
 
       - name: Download the build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
